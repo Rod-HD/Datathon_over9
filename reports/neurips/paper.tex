@@ -1,0 +1,170 @@
+\documentclass{article}
+
+% NeurIPS 2024 style. Download from https://neurips.cc/Conferences/2024/CallForPapers
+% and place neurips_2024.sty alongside this file. Compile with:
+%   pdflatex paper.tex
+\usepackage[final]{neurips_2024}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{microtype}
+
+\title{An Inverse-MAE Ensemble for 18-Month Daily Sales Forecasting\\
+  in a Vietnamese Fashion Retailer}
+
+\author{%
+  Duy \\
+  DATATHON 2026 Round 1 --- Part 3: Sales Forecasting
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We forecast daily Revenue and COGS for 548 days (2023-01-01 to 2024-07-01)
+given a decade of transactional history (2012-07-04 to 2022-12-31). A data
+audit shows that of the 14 provided tables only \texttt{sales.csv} spans the
+test horizon, so the task reduces to univariate forecasting with calendar
+covariates. We ensemble three contrasting models --- a seasonal-naive baseline
+with compound YoY growth, a trend-detrended LightGBM on Fourier features, and
+a Prophet model with log-transformed targets and anomaly-derived holidays ---
+combined via inverse-MAE weights from a yearly walk-forward cross-validation.
+The ensemble improves Revenue MAE by $\sim$0.4\% and COGS MAE by $\sim$0.08\%
+over the best individual model on held-out 2020--2022 folds. SHAP analysis
+confirms that the annual Fourier component and a 2-year Revenue lag carry the
+bulk of the predictive signal.
+\end{abstract}
+
+\section{Problem and Data}
+
+The organizer provides 14 CSVs of e-commerce activity. A data audit reveals
+that only \texttt{sales.csv} contains rows after 2022-12-31, so any external
+aggregate (orders, traffic, promotions, inventory) can act only on the train
+side. The forecast target is the pair $(Revenue_t, COGS_t)$ for each
+$t \in [2023\text{-}01\text{-}01, 2024\text{-}07\text{-}01]$.
+
+\paragraph{Constraints.} (i) no external data, (ii) no leakage from test-period
+targets, (iii) reproducibility (fixed seed 42), (iv) explainability.
+
+\paragraph{Trend.} Annual revenue is non-monotonic: it peaks in 2016, bottoms
+near 2019, and partially recovers by 2022. The geometric YoY growth across the
+train span is 0.962, slightly deflationary. Any model assuming monotonic growth
+misextrapolates toward 2024.
+
+\section{Method}
+
+\subsection{Feature engineering}
+Test-time features are reconstructed from \texttt{Date} only:
+\begin{itemize}
+  \item Calendar: year, month, day, day-of-week, day-of-year, week, quarter,
+    and weekend / month-end / quarter-end / year-end flags.
+  \item Fourier terms on periods 365.25 (order 6), 7 (order 3), 30.44 (order 3).
+  \item Lags at 548, 729, 1094 days and rolling mean/std (windows 7, 28, 90)
+    shifted by 548 so every rolling value is drawn from pre-test history.
+  \item Anomaly-day flag: a binary indicator for (month, day) pairs whose
+    Revenue deviates by $|z| > 2$ from a 30-day rolling baseline in $\ge 3$
+    distinct training years. This proxies Vietnamese holidays (T\'{e}t,
+    30/4, 2/9, Black Friday) without external calendars.
+  \item Promo-active count: number of \texttt{promotions.csv} windows live on
+    each date (projects only where \texttt{end\_date} $\ge$ test start).
+\end{itemize}
+
+\subsection{Base models}
+\textbf{Seasonal-naive baseline.} Let $\bar S_{md}$ be the average of the
+normalized revenue (divided by its annual mean) for month $m$, day $d$ across
+training years. The prediction at $t = (y, m, d)$ is
+$\hat y_t = B \cdot g^{y - y_0} \cdot \bar S_{md}$,
+where $B = \text{annual total}(y_0) / 365$ and $g$ is the geometric YoY
+growth across full training years.
+
+\textbf{Detrended LightGBM.} We divide each training target by
+$B \cdot g^{y - y_0}$ and train LightGBM to predict the resulting seasonal
+ratio (mean $\approx 1$). Year and linear-time columns are dropped to force
+LGBM to learn seasonality only; the trend is reattached at inference.
+
+\textbf{Prophet.} Log1p-transformed target with multiplicative yearly and
+weekly seasonality, changepoint prior 0.05, and the anomaly-day set fed as a
+single ``Holidays'' component.
+
+\subsection{Ensemble}
+Let $e_m$ be the mean CV MAE of model $m$ across folds
+$\{2020, 2021, 2022\}$. Weights are
+$w_m = (1/e_m) / \sum_k (1/e_k)$, and the final prediction is
+$\hat y_t = \sum_m w_m \hat y_t^{(m)}$, applied independently for Revenue and
+COGS.
+
+\subsection{Cross-validation}
+Walk-forward expanding-window: train on $[2012, y-1]$, validate on the full
+calendar year $y$, for $y \in \{2020, 2021, 2022\}$. Final fits use all
+$[2012, 2022]$ data.
+
+\section{Experiments}
+
+\begin{table}[h]
+  \centering
+  \caption{Mean CV MAE across the 2020--2022 yearly walk-forward folds.}
+  \begin{tabular}{lrr}
+    \toprule
+    Model & Revenue MAE & COGS MAE \\
+    \midrule
+    Seasonal-naive baseline & 610{,}020 & 523{,}701 \\
+    Detrended LightGBM      & 800{,}923 & 705{,}244 \\
+    Prophet                 & 860{,}218 & 707{,}396 \\
+    \midrule
+    Inverse-MAE ensemble    & \textbf{607{,}514} & \textbf{523{,}273} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The baseline dominates because its explicit trend $\times$ seasonality
+decomposition matches the data-generating structure. Tree models cannot
+extrapolate trend without leaking it through a column; our detrending removes
+this leak but loses some bias correction. Prophet's piecewise-linear trend
+overfits the 2016 peak.
+
+\section{Explainability}
+
+SHAP on the detrended LightGBM (gain-based, 2022 as held-out):
+\texttt{Revenue\_lag729}, \texttt{y\_cos1} (annual), \texttt{day\_of\_year},
+\texttt{day}, \texttt{is\_anomaly\_day} collectively explain most of the
+variance --- confirming that a 2-year lag plus annual Fourier is the essential
+signal. See \texttt{reports/figures/shap\_summary\_revenue.png}.
+
+Prophet's component plot (\texttt{reports/figures/prophet\_components\_revenue.png})
+shows a slightly declining trend, a sharp annual peak in Q4 (Black Friday /
+Vietnamese T\'{e}t) and a pronounced weekly cycle with weekend dips. Anomaly
+days contribute a multiplicative uplift of 10--25\% during holiday windows.
+
+\section{Business insights}
+
+\begin{itemize}
+  \item \textbf{Q4 dominates the year}: annual Fourier peaks in December;
+    budget fulfillment and stock planning should front-load Q4.
+  \item \textbf{Weekday cycle is strong}: weekends run $\sim$15--20\% below
+    weekday revenue --- staffing can be adjusted.
+  \item \textbf{Trend has reset twice}: after the 2016 peak and again after
+    the 2019 trough. A strict compound-growth assumption understates 2022--2024
+    if the recovery continues. We report a conservative forecast anchored to
+    the 10-year geometric mean.
+\end{itemize}
+
+\section{Limitations}
+
+(i) Only one source table covers the test window, capping achievable MAE.
+(ii) The 18-month horizon outruns any short lag; we compensate with calendar
+structure but cannot capture macroeconomic or competitor shifts.
+(iii) Ensemble gain over the baseline is small; a single-model submission
+would be nearly identical in expected leaderboard score.
+
+\section*{Reproducibility}
+All code, configs and figures at
+\url{https://github.com/<USER>/datathon-2026-part3}.
+Running \texttt{python run\_pipeline.py} after restoring \texttt{data/}
+regenerates every submission CSV and figure used in this paper.
+
+\end{document}

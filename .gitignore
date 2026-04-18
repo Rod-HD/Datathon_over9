@@ -1,0 +1,37 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Data files (keep only sample_submission + baseline)
+data/*.csv
+!data/sample_submission.csv
+data/*.parquet
+data/*.zip
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+
+# Submissions (keep folder, ignore files except README)
+submissions/*.csv
+!submissions/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Kaggle credentials (safety)
+kaggle.json
