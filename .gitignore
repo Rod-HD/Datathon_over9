@@ -3,12 +3,6 @@
 venv/
 env/
 
-# Data files (keep only sample_submission + baseline)
-data/*.csv
-!data/sample_submission.csv
-data/*.parquet
-data/*.zip
-
 # Python
 __pycache__/
 *.pyc
@@ -21,10 +15,6 @@ __pycache__/
 .ipynb_checkpoints/
 *.nbconvert.ipynb
 
-# Submissions (keep folder, ignore files except README)
-submissions/*.csv
-!submissions/.gitkeep
-
 # OS
 .DS_Store
 Thumbs.db
@@ -32,7 +22,6 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
-.claude/
 
 # Kaggle credentials (safety)
 kaggle.json

@@ -1,1 +1,0 @@
-{'cfg': {'changepoint_prior_scale': 0.1, 'seasonality_prior_scale': 10.0, 'yearly_seasonality': 20, 'changepoint_range': 0.85}, 'regressors': ['promo_active_count', 'is_anomaly_day'], 'ph_total': 1250852.1154702646, 'y22_total': 1464449.0483912008, 'geo': 1353443.4565871414}

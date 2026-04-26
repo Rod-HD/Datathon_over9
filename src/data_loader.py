@@ -4,6 +4,7 @@ Each function returns a pandas DataFrame with dtypes already parsed.
 """
 from __future__ import annotations
 
+import functools
 from pathlib import Path
 import pandas as pd
 
@@ -22,6 +23,7 @@ def load_customers() -> pd.DataFrame:
     return _read("customers.csv", parse_dates=["signup_date"])
 
 
+@functools.lru_cache(maxsize=1)
 def load_promotions() -> pd.DataFrame:
     return _read("promotions.csv", parse_dates=["start_date", "end_date"])
 
@@ -54,10 +56,12 @@ def load_reviews() -> pd.DataFrame:
     return _read("reviews.csv", parse_dates=["review_date"])
 
 
+@functools.lru_cache(maxsize=1)
 def load_sales() -> pd.DataFrame:
     return _read("sales.csv", parse_dates=["Date"])
 
 
+@functools.lru_cache(maxsize=1)
 def load_sample_submission() -> pd.DataFrame:
     return _read("sample_submission.csv", parse_dates=["Date"])
 
