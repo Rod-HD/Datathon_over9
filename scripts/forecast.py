@@ -135,6 +135,12 @@ def apply_postprocess(
     dow_revenue: np.ndarray,
     dow_cogs: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
+    """Apply deterministic post-processing pipeline to ensemble predictions.
+
+    Scales predictions, adjusts for day-of-week effects, adds bias corrections,
+    enforces non-negativity and COGS cap, and rounds to submission format (2dp).
+    All parameters are calibrated on CV and fixed during ensemble optimization.
+    """
     dow_index = pd.DatetimeIndex(pd.to_datetime(dates)).dayofweek
     revenue_effect = 1.0 + DOW_STRENGTH * (dow_revenue[dow_index] - 1.0)
     cogs_effect = 1.0 + DOW_STRENGTH * (dow_cogs[dow_index] - 1.0)
@@ -144,17 +150,25 @@ def apply_postprocess(
 
 
 def evaluate(pred_revenue: np.ndarray, pred_cogs: np.ndarray, true_revenue: np.ndarray, true_cogs: np.ndarray) -> Metrics:
+    """Compute competition metrics (MAE, RMSE, R²) on concatenated Revenue+COGS vector."""
     mae, rmse, r2 = mae_rmse_r2(pred_revenue, pred_cogs, true_revenue, true_cogs)
     return Metrics(mae=mae, rmse=rmse, r2=r2)
 
 
 def softmax(values: np.ndarray) -> np.ndarray:
+    """Convert unconstrained vector to probabilities via softmax (ensures sum=1, non-negative)."""
     shifted = values - values.max()
     exp_values = np.exp(shifted)
     return exp_values / exp_values.sum()
 
 
 def build_fold_predictions(sales: pd.DataFrame) -> list[FoldPredictions]:
+    """Build expanding-window CV folds: train strictly before each validation year.
+
+    For each fold year (2020, 2021, 2022), trains all three base models on data
+    strictly before that year, then predicts on the holdout year. Day-of-week
+    factors recomputed per fold to prevent leakage.
+    """
     folds: list[FoldPredictions] = []
     for year in VALIDATION_YEARS:
         train = sales[sales["Date"].dt.year < year].copy()
@@ -177,6 +191,7 @@ def build_fold_predictions(sales: pd.DataFrame) -> list[FoldPredictions]:
 
 
 def fold_metrics(fold: FoldPredictions, revenue_weights: np.ndarray, cogs_weights: np.ndarray) -> Metrics:
+    """Compute MAE/RMSE/R² for a single fold given ensemble weights."""
     revenue, cogs = apply_postprocess(
         blend(fold.revenue_matrix, revenue_weights),
         blend(fold.cogs_matrix, cogs_weights),
@@ -188,6 +203,11 @@ def fold_metrics(fold: FoldPredictions, revenue_weights: np.ndarray, cogs_weight
 
 
 def objective_from_weights(folds: list[FoldPredictions], revenue_weights: np.ndarray, cogs_weights: np.ndarray) -> float:
+    """Evaluate ensemble weights: weighted average of RMSE/MAE/(1-R²) across all CV folds.
+
+    Minimizing this objective balances all three metrics: RMSE (45%), MAE (35%), (1-R²) (20%).
+    Normalized to keep scale numerically stable (~1.0) for optimization.
+    """
     losses = []
     for fold in folds:
         metrics = fold_metrics(fold, revenue_weights, cogs_weights)
@@ -200,6 +220,11 @@ def objective_from_weights(folds: list[FoldPredictions], revenue_weights: np.nda
 
 
 def optimize_weights(folds: list[FoldPredictions], restarts: int = 12) -> OptimizedWeights:
+    """Minimize objective over softmax-parameterized weight vectors via Nelder-Mead.
+
+    Uses 12 random restarts from different initializations to find global optimum.
+    Returns separate weights for Revenue and COGS, each constrained to [0,1] via softmax.
+    """
     rng = np.random.default_rng(SEED)
     starts = [np.zeros(len(MODEL_NAMES) * 2)]
     starts.extend(rng.normal(0.0, 1.0, len(MODEL_NAMES) * 2) for _ in range(restarts - 1))
@@ -231,10 +256,12 @@ def optimize_weights(folds: list[FoldPredictions], restarts: int = 12) -> Optimi
 
 
 def format_weights(weights: np.ndarray) -> str:
+    """Format ensemble weight vector as human-readable string (e.g., 'theta=0.1742, ...')."""
     return ", ".join(f"{name}={weight:.4f}" for name, weight in zip(MODEL_NAMES, weights))
 
 
 def write_submission(path: Path, dates: pd.Series, revenue: np.ndarray, cogs: np.ndarray) -> None:
+    """Write final predictions to CSV in competition format: Date, Revenue, COGS."""
     path.parent.mkdir(exist_ok=True)
     pd.DataFrame({
         "Date": pd.to_datetime(dates).dt.strftime("%Y-%m-%d"),
@@ -244,6 +271,7 @@ def write_submission(path: Path, dates: pd.Series, revenue: np.ndarray, cogs: np
 
 
 def date_feature_frame(sales: pd.DataFrame) -> pd.DataFrame:
+    """Construct calendar features (DoW, month, year, cyclic encodings) for explainability."""
     date = sales["Date"]
     frame = pd.DataFrame({
         "dow": date.dt.dayofweek,
@@ -264,6 +292,11 @@ def date_feature_frame(sales: pd.DataFrame) -> pd.DataFrame:
 
 
 def write_feature_importance(sales: pd.DataFrame, path: Path) -> pd.DataFrame:
+    """Compute and save feature importance: absolute Pearson correlation with Revenue+COGS.
+
+    Returns DataFrame with feature, importance (absolute correlation), and importance_pct.
+    Writes to reports/feature_importance.csv.
+    """
     features = date_feature_frame(sales)
     rows = []
     for feature in features.columns:
@@ -289,6 +322,12 @@ def write_report(
     final_cogs: np.ndarray,
     feature_importance: pd.DataFrame,
 ) -> None:
+    """Generate comprehensive reproducibility report (drivers.md) with method, CV, leakage, formulas.
+
+    Writes to reports/drivers.md. Includes executive summary, detailed method explanation,
+    CV results, leakage control measures, feature importance, mathematical formulas,
+    hyperparameters, and final submission totals.
+    """
     avg = Metrics(
         mae=float(np.mean([metrics.mae for _, metrics in fold_results])),
         rmse=float(np.mean([metrics.rmse for _, metrics in fold_results])),

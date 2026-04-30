@@ -15,11 +15,12 @@ from statsmodels.tsa.arima.model import ARIMA as SM_ARIMA
 from src.models.baseline import fit_and_predict as baseline_pred
 
 
+# Pre-tuned ARIMA orders from grid search over CV folds. (p, d, q) where d=0 (no differencing needed).
 BEST_ORDER: dict[str, tuple[int, int, int]] = {
-    "Revenue": (2, 0, 2),
-    "COGS": (1, 0, 3),
+    "Revenue": (2, 0, 2),  # ARIMA(2,0,2): 2 AR terms, 0 differencing, 2 MA terms
+    "COGS": (1, 0, 3),  # ARIMA(1,0,3): 1 AR term, 0 differencing, 3 MA terms
 }
-RESIDUAL_WINDOW_YEARS = 3
+RESIDUAL_WINDOW_YEARS = 3  # Fit ARIMA on residuals from the last 3 years of training data only
 
 
 @dataclass
@@ -41,19 +42,22 @@ class ARIMAForecaster:
         train["Date"] = pd.to_datetime(train["Date"])
         self._train_df = train.copy()
 
+        # Step 1: Compute linear_last3 seasonal baseline (long-horizon trend).
         baseline = baseline_pred(train, train["Date"], self.target_col, "linear_last3", 6).values
-        residuals = train[self.target_col].values - baseline
+        residuals = train[self.target_col].values - baseline  # Get residuals from baseline
 
+        # Step 2: Fit ARIMA only on recent residuals (last N years) to capture short-term autocorrelation.
         window = self.residual_window_years or RESIDUAL_WINDOW_YEARS
         max_year = train["Date"].dt.year.max()
-        recent_mask = train["Date"].dt.year >= (max_year - window + 1)
+        recent_mask = train["Date"].dt.year >= (max_year - window + 1)  # Select recent years
 
         series = pd.Series(
             residuals[recent_mask],
             index=pd.DatetimeIndex(train.loc[recent_mask, "Date"].values),
         )
-        series = series.asfreq("D").interpolate("linear").ffill().bfill()
+        series = series.asfreq("D").interpolate("linear").ffill().bfill()  # Fill missing daily values
 
+        # Step 3: Fit ARIMA with trend="n" (no additional trend, baseline handles it).
         self._arima_result = SM_ARIMA(series, order=self.order, trend="n").fit()
         self._last_date = series.index[-1]
 

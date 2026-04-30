@@ -8,10 +8,12 @@ import functools
 from pathlib import Path
 import pandas as pd
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+DATA_DIR = Path(__file__).resolve().parents[1] / "data"  # Path to data/ directory relative to src/
 
 
 def _read(file: str, parse_dates: list[str] | None = None) -> pd.DataFrame:
+    # Helper function to read CSV with automatic dtype inference and optional date parsing.
+    # low_memory=False avoids SettingWithCopyWarning for large files.
     return pd.read_csv(DATA_DIR / file, parse_dates=parse_dates, low_memory=False)
 
 
@@ -58,11 +60,15 @@ def load_reviews() -> pd.DataFrame:
 
 @functools.lru_cache(maxsize=1)
 def load_sales() -> pd.DataFrame:
+    # Load training data (2012-07-04 to 2022-12-31) with daily Revenue and COGS.
+    # Cached to avoid reloading in multiple forecast.py calls.
     return _read("sales.csv", parse_dates=["Date"])
 
 
 @functools.lru_cache(maxsize=1)
 def load_sample_submission() -> pd.DataFrame:
+    # Load test set dates (2023-01-01 to 2024-07-01) for forecast output schema.
+    # Cached for efficiency. Note: Revenue/COGS columns here are dummy values (ignored).
     return _read("sample_submission.csv", parse_dates=["Date"])
 
 
@@ -74,6 +80,8 @@ def load_web_traffic() -> pd.DataFrame:
     return _read("web_traffic.csv", parse_dates=["date"])
 
 
+# Registry of all available data loaders for exploratory analysis and preprocessing.
+# Used by scripts/preprocess_data.py. Not used by the main forecast pipeline.
 ALL_LOADERS = {
     "products": load_products,
     "customers": load_customers,

@@ -26,10 +26,10 @@ def final_submission_values(
     The COGS cap is floored to cents so a rounded COGS value cannot exceed
     the rounded Revenue cap by a cent.
     """
-    revenue = np.round(np.clip(np.asarray(revenue_pred, dtype=float), 0.0, None), 2)
-    cogs = np.round(np.clip(np.asarray(cogs_pred, dtype=float), 0.0, None), 2)
-    cogs_cap = np.floor((revenue * max_cogs_ratio) * 100.0) / 100.0
-    cogs = np.round(np.minimum(cogs, cogs_cap), 2)
+    revenue = np.round(np.clip(np.asarray(revenue_pred, dtype=float), 0.0, None), 2)  # Clip negative → 0, round to 2dp
+    cogs = np.round(np.clip(np.asarray(cogs_pred, dtype=float), 0.0, None), 2)  # Same for COGS
+    cogs_cap = np.floor((revenue * max_cogs_ratio) * 100.0) / 100.0  # COGS cap = 1.05 × Revenue, floored to cents
+    cogs = np.round(np.minimum(cogs, cogs_cap), 2)  # Enforce COGS ≤ cap
     return revenue, cogs
 
 
@@ -48,14 +48,14 @@ def mae_rmse_r2(
     true_cogs: np.ndarray,
 ) -> tuple[float, float, float]:
     """Compute MAE, RMSE, and R2 exactly as defined in the statement."""
-    forecast = combine_targets(pred_revenue, pred_cogs)
-    actual = combine_targets(true_revenue, true_cogs)
+    forecast = combine_targets(pred_revenue, pred_cogs)  # [Rev_1..n, COGS_1..n]
+    actual = combine_targets(true_revenue, true_cogs)  # [Rev_1..n, COGS_1..n]
     errors = forecast - actual
 
-    mae = float(np.mean(np.abs(errors)))
-    rmse = float(np.sqrt(np.mean(errors ** 2)))
+    mae = float(np.mean(np.abs(errors)))  # Mean absolute error across all 2n values
+    rmse = float(np.sqrt(np.mean(errors ** 2)))  # Root mean squared error
 
-    ss_res = float(np.sum((actual - forecast) ** 2))
-    ss_tot = float(np.sum((actual - np.mean(actual)) ** 2))
-    r2 = 1.0 - ss_res / ss_tot if ss_tot > 0.0 else 0.0
+    ss_res = float(np.sum((actual - forecast) ** 2))  # Residual sum of squares
+    ss_tot = float(np.sum((actual - np.mean(actual)) ** 2))  # Total sum of squares
+    r2 = 1.0 - ss_res / ss_tot if ss_tot > 0.0 else 0.0  # Coefficient of determination (R² = 1 - SS_res/SS_tot)
     return mae, rmse, float(r2)
