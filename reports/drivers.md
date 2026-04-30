@@ -2,91 +2,67 @@
 
 ---
 
-## 📊 MAIN CONTENT — 2023–2024 Revenue & COGS Forecast (Future Outlook)
+# ⭐ MAIN CONTENT ⭐
+## (Revenue & COGS Forecast 2023–2024)
 
-### Executive Summary: What Will Revenue Look Like?
+### 📌 THE FORECAST: 2023-01-01 to 2024-07-01 (548 days)
 
-**The Forecast at a Glance** (2023-01-01 to 2024-07-01, 548 days):
+| Metric | Value |
+|---|---|
+| **Total Revenue** | 2.322B VND |
+| **Daily Average** | 4.24M VND |
+| **Total COGS** | 2.109B VND |
+| **Forecast Accuracy (R²)** | 0.7778 (77.8% variance captured) |
+| **Typical Daily Error (MAE)** | ±523K VND (±12%) |
 
-| Metric | Value | Implication |
+---
+
+### 🎯 WHAT DRIVES REVENUE? (5 Key Patterns)
+
+1. **Annual Seasonality** → Q3 +18%, Q1/Q4 -8% (summer peaks vs winter lows)
+2. **Weekly Cycles** → Wed–Thu +9% above average (work-schedule effect)
+3. **Month-End Spikes** → +13% boost at month-end (payroll-driven purchasing)
+4. **Long-Term Growth** → 3–5% annual expansion continues into 2023–2024
+5. **Daily Randomness** → Promotions, shocks, events add ±12% error margin
+
+---
+
+### ✅ MODEL RELIABILITY (3-Year Historical Validation)
+
+| Year Tested | Forecast Error (MAE) | Variance Captured (R²) |
 |---|---|---|
-| **Total Revenue** | **2.322B VND** | Sustained 4.24M VND daily average |
-| **Total COGS** | **2.109B VND** | Healthy 90.8% ratio; efficient operations |
-| **Daily Avg Revenue** | **4,238,128 VND** | Mid-range stability vs 2012–2022 (2–8M range) |
-| **Forecast Error (MAE)** | **±523K VND** | ±12% typical daily error margin |
-| **Model R²** | **0.7778** | 77.8% of revenue variance explained |
+| 2020 | 520K VND | 0.784 |
+| 2021 | 508K VND | 0.770 |
+| 2022 | 540K VND | 0.779 |
 
-### What Drives Revenue During 2023–2024?
-
-Based on 10 years of historical data (2012–2022), we identify **five key patterns** that will shape revenue:
-
-1. **Summer Peaks & Winter Lows** (Annual Seasonality, **~18% swing**)
-   - Q3 (Jun–Aug): Revenue peaks due to summer collections and holiday shopping
-   - Q1/Q4 (Dec–Feb): Revenue dips 8–10% below average
-   - *Business impact*: Plan inventory, marketing budgets, and staffing around this cycle
-
-2. **Mid-Week Surges** (Weekly Pattern, **~9% above average Wed–Thu**)
-   - Wednesday–Thursday consistently outperform weekends by 8–9%
-   - *Interpretation*: Work-schedule purchasing or B2B order clustering
-   - *Action*: Allocate more logistics capacity for Tue–Thu delivery
-
-3. **Month-End Purchase Spike** (Payroll Cycle, **~13% boost**)
-   - Consistent +13% at month-end correlates with payroll disbursement in Vietnam
-   - *Business impact*: Monthly cash flow predictable; month-end operational load increases
-
-4. **Modest Growth Trajectory** (Long-Term Trend)
-   - 2012–2022 showed steady geometric growth (3–5% annually)
-   - Model extrapolates this into 2023–2024: revenue rises modestly but steadily
-   - *Unlike tree models which would cap at 2022 levels*
-
-5. **Daily Randomness** (Unmodeled Events, **±523K MAE**)
-   - Promotions, supply shocks, weather effects not captured
-   - Typical error: ±12% on any given day
-   - *Plan conservative buffers for irregular spikes/drops*
+**Why it works**: Consistent R² ~0.78 across 3 years proves the model captures **repeatable seasonal patterns** and **long-term growth trend** — not overfitting. Expanding-window CV (train before each year) prevents any test leakage.
 
 ---
 
-### Forecast Reliability: How Well Does the Model Perform?
+### 🛠️ HOW: Theta Decomposition (17.4%) + Hybrid ARIMA (82.6%)
 
-On historical 2020–2022 holdout data (expanding-window validation), the model achieved:
+Both models capture **long-term growth explicitly** — why classical time-series beats tree/neural methods that cap at training range.
 
-| Year | Mean Absolute Error | R² Score | Interpretation |
-|---|---|---|---|
-| **2020** | 520K VND | 0.784 | Excellent: captures 78.4% of seasonal/trend variance |
-| **2021** | 508K VND | 0.770 | Consistent: year-to-year reliability confirmed |
-| **2022** | 540K VND | 0.779 | Stable: no degradation despite longer horizon |
-
-**Why these numbers matter**: R² ~0.78 on 3-year validation span (not just one year) proves the model reliably extrapolates beyond training range. Consistency across years (all R² > 0.77) shows seasonal patterns are **repeatable** — not one-off flukes.
+- **Validation**: Expanding-window CV (train strictly before each test year)
+- **Data**: sales.csv only (2012–2022); no external data
+- **Reproducibility**: SEED=42 fixed; full code in `scripts/forecast.py`
 
 ---
 
-### How the Forecast Was Built
+### 💡 BUSINESS TAKEAWAYS
 
-**Method**: Ensemble of Theta decomposition (17.4% weight) + Hybrid ARIMA (82.6% weight)
-- Both models explicitly capture long-term growth (why they beat tree/neural alternatives)
-- Weights optimized on out-of-fold validation (no test leakage)
-- Daily predictions scaled, adjusted for day-of-week, rounded to 2 decimals
-
-**Validation Approach**: Expanding-window CV (train strictly before each year, then test on that year) — mimics real forecasting: future never seen during training.
-
-**Reproducibility**: Full pipeline in `scripts/forecast.py` with random seed SEED=42; uses only sales.csv (2012–2022); no external data.
+✅ Revenue **stable** at 4.24M/day; growth continues modestly  
+✅ COGS ratio **healthy** at 90.8%; operational efficiency maintained  
+✅ Seasonality **predictable** (±18% annual, ±9% weekly, +13% month-end)  
+✅ Error margin **manageable** (±523K/day; plan 12% buffer for daily ops)  
+✅ Model **proven** on 3-year holdout; not overfit
 
 ---
 
-### Bottom Line for Decision-Making
-
-✅ **Revenue stable**: 4.24M VND/day is mid-range; growth continues modestly  
-✅ **Cost ratio healthy**: COGS stays at 90.8%; operational efficiency maintained  
-✅ **Seasonal swing predictable**: ±18% annual cycle, ±9% weekly cycle, +13% month-end  
-✅ **±523K error margin**: Plan 12% buffer for daily operations; less critical for monthly/quarterly planning  
-✅ **Model proven**: 78% variance explained on 3-year holdout; not overfit
-
 ---
 
-## 📋 APPENDICES (Technical Details & Reproducibility)
-
-### A. Input Preprocessing & Feature Engineering  
-
+# 📚 APPENDICES 📚
+## (Technical Details & Reproducibility)
 
 ### A. Input Preprocessing & Feature Engineering
 
