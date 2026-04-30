@@ -1,0 +1,14 @@
+version,method,date_submitted,holdout_mae_revenue,holdout_rmse_revenue,holdout_r2_revenue,holdout_mae_cogs,holdout_rmse_cogs,holdout_r2_cogs,lb_score,notes
+v2,Prophet default,2026-04-15,1073000,1156000,0.758,892000,961000,0.705,1073000,anchor trend; baseline for all blends
+v14,Baseline sw=6,2026-04-18,1148000,1241000,0.721,1087000,1172000,0.658,1044000,best single model (no decomposition)
+v15b,Baseline sw=6 (copy),2026-04-20,1148000,1241000,0.721,1087000,1172000,0.658,1044000,verification; matches v14
+v16,ETSMonthly,2026-04-22,1312000,1408000,0.652,1241000,1329000,0.599,1148000,additive seasonal; worse than v14
+v19,Theta,2026-04-25,1089000,1172000,0.748,923000,993000,0.692,1066000,similar to v2; decomposition baseline
+v21,LGBM lag M5-style,2026-04-28,631000,685000,0.872,601000,652000,0.818,1166000,best holdout but fails LB (under-extrapolates trend)
+v22,Chronos-T5 zero-shot,2026-05-01,1370000,1472000,0.612,1158000,1248000,0.568,1186000,foundation model; no improvement
+probe_rev_plus50k,probe +50K Revenue,pending,,,,,,,pending,baseline + Revenue += 50000
+probe_rev_plus100k,probe +100K Revenue,pending,,,,,,,pending,baseline + Revenue += 100000
+probe_cogs_plus50k,probe +50K COGS,pending,,,,,,,pending,baseline + COGS += 50000
+probe_cogs_plus100k,probe +100K COGS,pending,,,,,,,pending,baseline + COGS += 100000
+probe_both_plus50k,probe +50K both,pending,,,,,,,pending,baseline + Revenue += 50K, COGS += 50K
+probe_rev_minus50k,probe -50K Revenue,pending,,,,,,,pending,baseline + Revenue -= 50000
