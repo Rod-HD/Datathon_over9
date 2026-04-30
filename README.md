@@ -1,73 +1,158 @@
-# DATATHON 2026 — Part 3: Sales Forecasting
+# DATATHON 2026 - Sales Forecasting
 
-Daily Revenue & COGS forecasting cho công ty thương mại điện tử thời trang Việt Nam.
-- **Train**: `data/sales.csv` (2012-07-04 → 2022-12-31)
-- **Test**: 548 ngày (2023-01-01 → 2024-07-01)
-- **Output**: `submissions/submission.csv`
+Daily forecasting project for `Revenue` and `COGS`.
 
-## Chạy pipeline
+- **Train data**: `data/sales.csv` — `2012-07-04` to `2022-12-31` (3,833 days)
+- **Forecast horizon**: `2023-01-01` to `2024-07-01` (548 days)
+- **Final submission**: `submissions/submission.csv`
+- **Scoring**: MAE, RMSE, and R² computed on the concatenated vector `[Revenue_1…548, COGS_1…548]` (n = 1,096)
 
-```bash
-# 1. Tiền xử lý dữ liệu raw -> preprocessed/
-python scripts/preprocess_data.py
+## Final Method
 
-# 2. Train + dự báo -> submissions/submission.csv
-python scripts/forecast.py
-```
+The complete reproducible pipeline is `scripts/forecast.py`.
 
-## Pipeline
+### Models in ensemble
 
-```
-sales.csv (2012-2022)
-   │
-   ├── Prophet (trend + yearly seasonality)
-   ├── linear_last3 baseline (log-linear extrapolation, sw=6)
-   ├── Theta (M3/M4 winning method)
-   └── Holt-Winters (Triple ES, weekly seasonality)
-   │
-   ▼
-NNLS blend on 2022 holdout (mean-based → optimal RMSE/R²)
-   │
-   ▼
-Auto-tuned scale (Rev/COGS) + DoW correction strength
-   │
-   ▼
-COGS cap (≤ 1.05 × Revenue) + clip non-negative + round 2dp
-   │
-   ▼
-submission.csv
-```
-
-## Files
-
-- `scripts/preprocess_data.py` — preprocessing logic từ notebook
-- `scripts/forecast.py` — main pipeline, output `submission.csv`
-- `src/data_loader.py` — data I/O
-- `src/postprocess.py` — clip, round, COGS cap
-- `src/explainability.py` — driver report + feature importance
-- `src/models/baseline.py` — linear_last3 seasonal baseline
-- `src/models/prophet_model.py` — Prophet wrapper
-- `src/models/theta_model.py` — Theta forecaster
-
-## Reproducibility
-
-- Random seed = 42 (set ở đầu `forecast.py`)
-- Auto-tune dùng grid search deterministic (không random)
-- Mọi model dùng full training data 2012-2022 để fit final
-
-## Explainability
-
-Sau khi chạy `forecast.py`:
-- `reports/drivers.md` — model contribution, DoW effect, YoY growth, holdout metrics
-- `reports/feature_importance.csv` — LightGBM feature importance từ date features
-
-## Metrics đánh giá
-
-| Metric | Hướng tốt | Tối ưu bởi |
+| Model | Role | Final weight (Revenue / COGS) |
 |---|---|---|
-| MAE | thấp | median |
-| RMSE | thấp | mean |
-| R² | cao (≤1) | mean |
+| **Hybrid ARIMA** | Linear seasonal trend baseline + ARIMA(2,0,3) residual correction | 0.8258 / 0.8330 |
+| **Theta** | M3/M4 winning decomposition method with log scaling | 0.1742 / 0.1670 |
+| Holt-Winters | Triple exponential smoothing — **tested, received 0% weight from optimizer** | 0.0000 / 0.0000 |
 
-Pipeline dùng NNLS-blend (mean-based) để tối ưu cả 3 metrics; auto-tune scale + DoW
-balance giữa MAE và RMSE.
+> **Note:** Holt-Winters is included as a candidate that was evaluated and ruled out by the
+> ensemble optimizer. The effective forecast is a weighted blend of Hybrid ARIMA and Theta only.
+
+### Ensemble weight optimization
+
+Weights are found by minimising this objective across 3 chronological validation folds:
+
+```
+0.45 * RMSE / 735,000 + 0.35 * MAE / 532,000 + 0.20 * (1 - R²)
+```
+
+via Nelder-Mead with 12 random restarts over softmax-parameterised weight vectors.
+
+### Post-processing (applied after blending)
+
+1. Multiply by `SCALE_REVENUE = 1.184` and `SCALE_COGS = 1.191`
+2. Day-of-week adjustment: `y × (1 + 0.40 × (dow_factor − 1))`
+3. Add `REVENUE_BIAS = 25,000` and `COGS_BIAS = 112,500` per day
+4. Clip to ≥ 0
+5. Cap `COGS ≤ 1.05 × Revenue`
+6. Round to 2 decimal places
+
+## Validation Results
+
+Expanding-window cross-validation — each fold trains on all years before the validation year:
+
+| Fold | Train | Validation | MAE | RMSE | R² |
+|---:|---|---|---:|---:|---:|
+| 2020 | 2012-07-04 → 2019-12-31 | 2020-01-01 → 2020-12-31 | 520,078 | 707,297 | 0.784505 |
+| 2021 | 2012-07-04 → 2020-12-31 | 2021-01-01 → 2021-12-31 | 507,854 | 741,795 | 0.770287 |
+| 2022 | 2012-07-04 → 2021-12-31 | 2022-01-01 → 2022-12-31 | 540,058 | 744,813 | 0.778666 |
+| **Avg** | | | **522,663** | **731,302** | **0.777819** |
+
+Final submission totals:
+
+| | Revenue | COGS |
+|---|---:|---:|
+| Total 2023–2024 | 2.322B VND | 2.109B VND |
+| Daily average | 4,238,128 VND | 3,848,980 VND |
+| COGS / Revenue | | 0.908 |
+
+## Reproduce Submission
+
+**Step 1 — set up environment** (first time only):
+
+```powershell
+cd D:\Duy\Docs\Datathon\model
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+**Step 2 — run the pipeline:**
+
+```powershell
+.\.venv\Scripts\python.exe scripts\forecast.py
+```
+
+The script reads from `data/` directly and writes:
+
+```
+submissions/submission.csv      ← final forecast (548 rows)
+reports/drivers.md              ← full reproducibility report
+reports/feature_importance.csv  ← calendar feature correlations
+```
+
+> `scripts/preprocess_data.py` is an **exploratory preprocessing script** that cleans all raw
+> tables into `preprocessed/`. It is **not required** to reproduce the submission —
+> `forecast.py` loads `data/sales.csv` and `data/sample_submission.csv` directly.
+
+## Leakage Control
+
+- **Expanding-window CV**: each fold trains strictly on `Date < fold_year`.
+- **DoW factors and interpolation** are recomputed inside each fold using only that fold's training data.
+- **Ensemble weights** are optimised on out-of-fold validation errors, not on the 2023–2024 test.
+- **`data/sample_submission.csv`** is used only to read future dates; its Revenue/COGS columns are never used.
+- **No test-period Revenue/COGS** are loaded at any stage of the pipeline.
+
+## Feature Engineering
+
+Classical time-series models are used, so feature work is primarily temporal:
+
+- Chronological sorting and linear interpolation of missing values (within each fold's training window only).
+- Log target scaling and learned day-of-week multiplier inside Theta.
+- Weekly multiplicative seasonality (period = 7) inside Holt-Winters.
+- Calendar-based seasonal profile (mean by month-day) and geometric growth trend inside Hybrid ARIMA.
+- ARIMA residuals fit on the last 3 training years only.
+- Diagnostic calendar features for explainability: `dow`, `dom`, `month`, `year`, `doy`, `week`, `is_weekend`, `is_month_end`, `days_since`.
+- Cyclic encodings: `doy_sin/cos = sin/cos(2π·doy/365.25)`, `dow_sin/cos = sin/cos(2π·dow/7)`.
+
+See `reports/drivers.md` for the full explainability report.
+
+## Project Structure
+
+```
+data/
+  sales.csv                     Daily Revenue + COGS (train, 2012–2022)
+  sample_submission.csv         Future dates for test period (2023–2024)
+  customers.csv, orders.csv,    Other raw tables (not used in forecast.py)
+  products.csv, … (11 files)
+
+preprocessed/
+  clean_sales.csv, …            Cleaned versions of all raw tables.
+                                Generated by scripts/preprocess_data.py.
+                                NOT used by forecast.py.
+
+scripts/
+  forecast.py                   Final reproducible forecast pipeline (run this)
+  preprocess_data.py            Exploratory data cleaning (optional, not required)
+
+src/
+  data_loader.py                Loads raw CSVs from data/ with correct dtypes
+  metrics.py                    MAE, RMSE, R² and final-value helpers
+  models/
+    arima_model.py              Hybrid ARIMA forecaster (trend baseline + ARIMA residuals)
+    baseline.py                 Seasonal baseline with growth estimators
+    theta_model.py              Theta method forecaster with DoW adjustment
+
+reports/
+  drivers.md                    Generated explainability report (re-created by forecast.py)
+  feature_importance.csv        Calendar feature correlation scores
+  drivers.tex                   LaTeX source of the report
+
+submissions/
+  submission.csv                Final forecast (548 rows, Date / Revenue / COGS)
+
+requirements.txt                Python dependencies for .venv
+datathon-data-preprocessing.ipynb  Exploratory notebook (not part of submission pipeline)
+```
+
+## Environment Notes
+
+- Python libraries must be installed inside `.venv` — do not install globally.
+- Machine-level tools (if any) should go under `D:\Programs`.
+- If the terminal cannot find Python, add to `PATH`:
+
+```
+D:\Duy\Docs\Datathon\model\.venv\Scripts
+```

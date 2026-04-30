@@ -1,0 +1,504 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{lmodern}
+\usepackage{parskip}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  urlcolor=blue!60!black,
+}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{gray!10},
+  frame=single,
+  framerule=0.4pt,
+  breaklines=true,
+  columns=flexible,
+  keepspaces=true,
+}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+\title{\textbf{Datathon 2026 --- Final Forecast Report}}
+\author{}
+\date{April 2026}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% ============================================================
+\section*{Executive Summary}
+\addcontentsline{toc}{section}{Executive Summary}
+% ============================================================
+
+An expanding-window cross-validated ensemble of three classical time-series forecasters
+(\textbf{Theta}, \textbf{Holt-Winters}, \textbf{Hybrid ARIMA}) predicts daily Revenue and
+COGS for 2023--2024. Ensemble weights are jointly optimised across three chronological folds
+(2020, 2021, 2022) to minimise a combined objective of RMSE (45\%), MAE (35\%), and
+$(1 - R^2)$ (20\%).
+
+\medskip
+Average cross-validated performance:
+\[
+  \textbf{MAE} = 522{,}663 \qquad \textbf{RMSE} = 731{,}302 \qquad \boldsymbol{R^2} = 0.7778
+\]
+
+Classical time-series models are used instead of tree-based or neural models because the test
+horizon (2023--2024) requires extrapolation beyond the training range (2012--2022). Tree
+ensembles such as LightGBM cannot predict values outside the training distribution and
+systematically under-forecast a growing series. Neural models without explicit trend covariates
+exhibit the same limitation and were ruled out after holdout testing.
+
+% ============================================================
+\section{Pipeline and Feature Engineering}
+% ============================================================
+
+\subsection{Input Preprocessing}
+
+\begin{itemize}
+  \item Daily sales data is sorted strictly by Date and treated as a contiguous time series.
+  \item Missing or zero values inside training windows are linearly interpolated, then
+        forward/back-filled. Interpolation is applied independently per fold so no future data
+        influences any training step.
+  \item All target values are clipped to non-negative before model input.
+\end{itemize}
+
+\subsection{Feature Engineering per Model}
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{L{2.2cm} L{2.8cm} L{4.5cm} L{4.5cm}}
+\toprule
+\textbf{Model} & \textbf{Feature type} & \textbf{Encoding method} & \textbf{Purpose} \\
+\midrule
+Theta & $\log(1 + y)$ & Logarithmic transform & Stabilises variance across the 10-year series \\
+\addlinespace
+Theta & Day-of-week (0--6) & Multiplicative factor: $\bar{y}_{\text{dow}} / \bar{y}_{\text{global}}$ & Captures weekly rhythm without dummy explosion \\
+\addlinespace
+Holt-Winters & Raw Revenue/COGS & No encoding --- ETS fits level, trend, seasonal states & Models exponential smoothing components directly \\
+\addlinespace
+Hybrid ARIMA & (month, day) pair & Calendar lookup: $\text{mean}(y/\bar{y}_{\text{annual}})$ & Intra-year seasonal profile baseline \\
+\addlinespace
+Hybrid ARIMA & Year index & Geometric growth fit on last 3 annual totals & Long-horizon trend extrapolation \\
+\addlinespace
+Hybrid ARIMA & Recent residuals (3 yr) & Raw residuals fed to ARIMA & Short-term autocorrelation correction \\
+\bottomrule
+\end{tabular}
+\caption{Feature engineering strategy per model.}
+\end{table}
+
+\subsection{Cyclic Encoding for Explainability}
+
+Raw integer calendar features (e.g., $\text{doy} \in \{1,\ldots,365\}$) create an artificial
+discontinuity at the year boundary: the model treats $\text{doy} = 365$ and $\text{doy} = 1$
+as maximally distant, even though they are one day apart. Cyclic encoding eliminates this
+artefact:
+\[
+  \text{doy\_sin} = \sin\!\left(\frac{2\pi \cdot \text{doy}}{365.25}\right), \qquad
+  \text{doy\_cos} = \cos\!\left(\frac{2\pi \cdot \text{doy}}{365.25}\right)
+\]
+\[
+  \text{dow\_sin} = \sin\!\left(\frac{2\pi \cdot \text{dow}}{7}\right), \qquad
+  \text{dow\_cos} = \cos\!\left(\frac{2\pi \cdot \text{dow}}{7}\right)
+\]
+
+One-hot encoding is \textbf{not} used because it would produce 365 or 7 sparse binary columns
+and would still not encode cyclic distance correctly. The $(\sin, \cos)$ pair is the minimal
+representation that preserves ordinal distance around the cycle.
+
+\subsection{Post-Prediction Postprocessing}
+
+After ensemble blending, predictions pass through a fixed deterministic pipeline:
+
+\begin{enumerate}
+  \item Multiply by \texttt{SCALE\_REVENUE} / \texttt{SCALE\_COGS} (systematic
+        under-prediction correction calibrated on CV).
+  \item Apply day-of-week adjustment:
+        \[
+          y' = y \times \bigl(1 + \delta_{\text{DoW}} \times (f_{\text{dow}} - 1)\bigr),
+          \quad \delta_{\text{DoW}} = 0.40
+        \]
+  \item Add daily bias terms \texttt{REVENUE\_BIAS} and \texttt{COGS\_BIAS}.
+  \item Clip to $\geq 0$.
+  \item Cap $\text{COGS} \leq 1.05 \times \text{Revenue}$ (competition constraint).
+  \item Round to 2 decimal places.
+\end{enumerate}
+
+% ============================================================
+\section{Time-Series Cross-Validation (Expanding Window)}
+% ============================================================
+
+\textbf{Method:} Expanding-window time-series cross-validation over three chronological folds.
+
+Unlike $k$-fold cross-validation --- which shuffles rows randomly and allows future
+observations to appear in the training set --- expanding-window CV preserves strict temporal
+order. The training window grows with each fold; no validation-year data is ever seen during
+training.
+
+\textbf{Why Expanding Window and not Rolling Window?}
+A rolling window discards older observations, losing the long-run growth trend that is critical
+for accurate extrapolation to 2023--2024. The expanding window uses all available history so
+the trend estimate improves with each fold.
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{rllrrr}
+\toprule
+\textbf{Fold} & \textbf{Train period} & \textbf{Validation period} & \textbf{MAE} & \textbf{RMSE} & \textbf{$R^2$} \\
+\midrule
+2020 & 2012-07-04 to 2019-12-31 & 2020-01-01 to 2020-12-31 & 520,078 & 707,297 & 0.784505 \\
+2021 & 2012-07-04 to 2020-12-31 & 2021-01-01 to 2021-12-31 & 507,854 & 741,795 & 0.770287 \\
+2022 & 2012-07-04 to 2021-12-31 & 2022-01-01 to 2022-12-31 & 540,058 & 744,813 & 0.778666 \\
+\midrule
+\textbf{Avg} & --- & --- & \textbf{522,663} & \textbf{731,302} & \textbf{0.777819} \\
+\bottomrule
+\end{tabular}
+\caption{Expanding-window CV results. Metrics computed on the concatenated
+$[\text{Revenue}, \text{COGS}]$ vector ($2 \times 365$ values per fold).}
+\end{table}
+
+% ============================================================
+\section{Leakage Control}
+% ============================================================
+
+\textbf{Definition:} data leakage occurs when information from the validation or test period is
+used --- directly or indirectly --- during model training or hyperparameter selection. This
+inflates in-sample metrics and produces models that fail on unseen data.
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{L{4.5cm} L{9cm}}
+\toprule
+\textbf{Control point} & \textbf{Implementation} \\
+\midrule
+No future Revenue/COGS in training &
+  Each fold filters strictly to \texttt{Date < fold\_year}; test Revenue/COGS are never
+  loaded at any stage. \\
+\addlinespace
+No global statistics from test data &
+  Scale factors, means, and standard deviations are computed only from the training portion
+  of each fold. \\
+\addlinespace
+DoW profiles recomputed per fold &
+  DoW multipliers use only \texttt{train[Date.year < fold\_year]}; the 2022 profile does
+  not see 2022 actuals. \\
+\addlinespace
+Interpolation within fold only &
+  Missing values are filled using each fold's training window alone; no forward-fill from
+  future observations. \\
+\addlinespace
+Ensemble weights from out-of-fold validation &
+  Softmax weights are optimised against fold validation errors, not the 2023--2024 test
+  horizon. \\
+\addlinespace
+Sample submission used only for dates &
+  The test CSV supplies future dates only; its Revenue/COGS columns are ignored. \\
+\bottomrule
+\end{tabular}
+\caption{Leakage control measures applied at every pipeline stage.}
+\end{table}
+
+% ============================================================
+\section{Feature Importance and Explainability}
+% ============================================================
+
+\textbf{Why not SHAP?}
+The production model is an ensemble of classical statistical forecasters (Theta, ARIMA). SHAP
+via TreeSHAP requires a gradient-boosted tree structure; DeepSHAP requires a neural network.
+Applying kernel SHAP to a time-series forecaster would require treating each forecast step as
+an independent sample, which discards the temporal autocorrelation structure the models are
+specifically designed to exploit. Absolute Pearson correlation between each calendar feature
+and Revenue/COGS is used instead as a deterministic, interpretable importance proxy.
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{lrL{8cm}}
+\toprule
+\textbf{Feature} & \textbf{Importance} & \textbf{Interpretation} \\
+\midrule
+\texttt{doy\_cos}      & 16.86\% & Cyclic annual phase (peak at seasonal high). \\
+\texttt{is\_month\_end} & 13.17\% & End-of-month purchasing spike --- payroll-cycle behavior. \\
+\texttt{days\_since}   & 10.91\% & Long-term growth trend --- largest driver of Revenue level. \\
+\texttt{doy\_sin}      & 10.68\% & Cyclic annual phase (rising Jan$\to$Jul). \\
+\texttt{year}          & 10.31\% & Annual level shift --- year-over-year business growth. \\
+\texttt{dom}           &  9.81\% & Day-of-month position --- reinforces end-of-month spikes. \\
+\texttt{month}         &  6.87\% & Broad seasonal periods (summer/winter peaks). \\
+\texttt{week}          &  6.36\% & Within-year seasonal progression. \\
+\bottomrule
+\end{tabular}
+\caption{Calendar feature importance (absolute Pearson correlation with Revenue + COGS).}
+\end{table}
+
+\textbf{Key insights:}
+\begin{itemize}
+  \item \textbf{doy\_cos / doy\_sin} dominate because fashion e-commerce demand follows a
+        strong annual cycle. Cyclic encoding captures this without the artificial discontinuity
+        of raw integer day-of-year.
+  \item \textbf{is\_month\_end} ($\approx$13\%) indicates consistent end-of-month purchasing
+        spikes, consistent with payroll-cycle consumer behavior and monthly promotional
+        campaigns.
+  \item \textbf{days\_since} + \textbf{year} together ($\approx$21\%) confirm long-run
+        business growth is the largest driver of absolute Revenue level --- the primary reason
+        tree ensembles fail on this task.
+  \item \textbf{dom} ($\approx$10\%) reinforces the monthly periodicity signal that
+        complements \texttt{is\_month\_end}.
+\end{itemize}
+
+% ============================================================
+\section{Optimised Ensemble Weights}
+% ============================================================
+
+The ensemble objective is:
+\[
+  \mathcal{L} = 0.45 \cdot \frac{\text{RMSE}}{735{,}000}
+              + 0.35 \cdot \frac{\text{MAE}}{532{,}000}
+              + 0.20 \cdot (1 - R^2)
+\]
+
+Weights are found via Nelder-Mead minimisation with 12 random restarts over
+softmax-parameterised weight vectors. Using softmax guarantees weights sum to 1 and remain
+non-negative without explicit constraints.
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{lrrL{6cm}}
+\toprule
+\textbf{Model} & \textbf{Revenue weight} & \textbf{COGS weight} & \textbf{Role} \\
+\midrule
+Theta        & 0.1742 & 0.1670 & Robust long-horizon trend with log scaling \\
+Holt-Winters & 0.0000 & 0.0000 & Weekly seasonal ETS --- 0\%, ruled out by optimizer \\
+Hybrid ARIMA & 0.8258 & 0.8330 & Linear seasonal trend + ARIMA residual correction \\
+\bottomrule
+\end{tabular}
+\caption{Optimised ensemble weights from expanding-window CV.}
+\end{table}
+
+% ============================================================
+\section{Final Submission Totals}
+% ============================================================
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+\textbf{Metric} & \textbf{Revenue} & \textbf{COGS} \\
+\midrule
+Total 2023--2024  & 2.322B VND & 2.109B VND \\
+Daily average     & 4,238,128 VND & 3,848,980 VND \\
+COGS / Revenue ratio & --- & 0.908 \\
+\bottomrule
+\end{tabular}
+\caption{Final submission aggregates for the 2023--2024 test period.}
+\end{table}
+
+% ============================================================
+\appendix
+\section{Full Hyperparameters}
+% ============================================================
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{L{5.5cm} R{3cm} L{5cm}}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Tuning method} \\
+\midrule
+ARIMA Revenue order $(p, d, q)$ & $(2, 0, 3)$ & Grid search ($8 \times 7$ combinations on CV) \\
+ARIMA COGS order $(p, d, q)$    & $(2, 0, 3)$ & Grid search \\
+ARIMA residual window (years)   & 3           & CV \\
+Holt-Winters trend              & additive    & Fixed \\
+Holt-Winters seasonal           & multiplicative & Fixed \\
+Holt-Winters seasonal\_periods  & 7           & Fixed (weekly) \\
+Theta period                    & 365         & Fixed (annual) \\
+Theta log transform             & True        & Fixed \\
+Theta deseasonalize             & True        & Fixed \\
+SCALE\_REVENUE                  & 1.184       & CV calibration \\
+SCALE\_COGS                     & 1.191       & CV calibration \\
+DOW\_STRENGTH                   & 0.40        & Manual tuning \\
+REVENUE\_BIAS (VND/day)         & 25,000      & CV calibration \\
+COGS\_BIAS (VND/day)            & 112,500     & CV calibration \\
+MAX\_COGS\_RATIO                & 1.05        & Competition constraint \\
+Random seed                     & 42          & Fixed \\
+Optimiser                       & Nelder-Mead & Fixed \\
+Optimiser restarts              & 12          & Fixed \\
+\bottomrule
+\end{tabular}
+\caption{Complete hyperparameter table with tuning provenance.}
+\end{table}
+
+% ============================================================
+\section{Mathematical Formulas}
+% ============================================================
+
+\subsection{Competition Metrics}
+
+\[
+  \text{MAE} = \frac{1}{n} \sum_{i=1}^{n} |F_i - A_i|
+\]
+\[
+  \text{RMSE} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} (F_i - A_i)^2}
+\]
+\[
+  R^2 = 1 - \frac{\displaystyle\sum_{i=1}^{n}(A_i - F_i)^2}
+             {\displaystyle\sum_{i=1}^{n}(A_i - \bar{A})^2}
+\]
+
+where $F_i$ is the forecast, $A_i$ the actual, and $\bar{A}$ the mean of actuals.
+$n = 2 \times 365 = 730$ (Revenue and COGS concatenated).
+
+\subsection{Theta Method}
+
+The Theta method \cite{theta2000} decomposes $y_t$ into two modified theta lines:
+\[
+  \tilde{y}_0(t) = 2\bar{y} - y_t \quad \text{(suppresses seasonality, retains linear trend)}
+\]
+\[
+  \tilde{y}_2(t) = y_t \quad \text{(retains the full series)}
+\]
+The $h$-step forecast is:
+\[
+  F(h) = \tfrac{1}{2}\,\text{SES}(\tilde{y}_0,\, h) + \tfrac{1}{2}(a + b(T + h))
+\]
+where SES denotes simple exponential smoothing on $\tilde{y}_0$, and $a, b$ are the OLS
+intercept and slope of $\tilde{y}_0$. Applied on $\log(1 + y)$; output is
+$e^{F(h)} - 1$ multiplied by the learned day-of-week factor.
+
+\subsection{Holt-Winters (Multiplicative Seasonality)}
+
+\begin{align*}
+  L_t &= \alpha \frac{y_t}{S_{t-m}} + (1-\alpha)(L_{t-1} + B_{t-1}) \\
+  B_t &= \beta (L_t - L_{t-1}) + (1-\beta) B_{t-1} \\
+  S_t &= \gamma \frac{y_t}{L_t} + (1-\gamma) S_{t-m} \\
+  F(h) &= (L_T + h B_T)\, S_{T+h - m\lceil h/m \rceil}
+\end{align*}
+
+with $m = 7$ (weekly) and $\alpha, \beta, \gamma$ optimised by SSE minimisation.
+
+\subsection{Hybrid ARIMA}
+
+\textbf{Step 1 --- Seasonal baseline:}
+\[
+  \hat{y}(t) = b \cdot g^{\Delta_{\text{yr}}} \cdot s(\text{month}, \text{day})
+\]
+where $b$ is the mean daily level of the last full training year, $g$ is the geometric mean
+of the last 3 annual year-over-year growth rates, and $s$ is the seasonal profile
+$\bar{y}_{\text{(month,day)}} / \bar{y}_{\text{annual}}$.
+
+\textbf{Step 2 --- Residual ARIMA$(p, 0, q)$:}
+\[
+  e_t = y_t - \hat{y}(t), \qquad
+  e_t = c + \sum_{i=1}^{p} \varphi_i e_{t-i} + \sum_{j=1}^{q} \theta_j \varepsilon_{t-j} + \varepsilon_t
+\]
+Fit on residuals from the last 3 training years only.
+
+\textbf{Step 3 --- Combine:}
+\[
+  F(h) = \max\!\bigl(0,\; \hat{y}(h) + \text{ARIMA\_forecast}(h)\bigr)
+\]
+
+\subsection{Ensemble Objective}
+
+Let $\mathbf{w}_{\text{rev}} = \text{softmax}(\mathbf{z}_{1:3})$ and
+$\mathbf{w}_{\text{cog}} = \text{softmax}(\mathbf{z}_{4:6})$ for unconstrained
+$\mathbf{z} \in \mathbb{R}^6$. For each fold year $k$:
+\[
+  \hat{\mathbf{v}}_k = \begin{pmatrix}
+    \text{postprocess}\!\left(\textstyle\sum_i w_{\text{rev},i}\, \hat{r}_{k,i}\right) \\
+    \text{postprocess}\!\left(\textstyle\sum_j w_{\text{cog},j}\, \hat{c}_{k,j}\right)
+  \end{pmatrix}, \qquad
+  \mathbf{a}_k = \begin{pmatrix} \mathbf{r}_k \\ \mathbf{c}_k \end{pmatrix}
+\]
+\[
+  \mathcal{L}_k = 0.45 \cdot \frac{\text{RMSE}(\hat{\mathbf{v}}_k, \mathbf{a}_k)}{735{,}000}
+                + 0.35 \cdot \frac{\text{MAE}(\hat{\mathbf{v}}_k, \mathbf{a}_k)}{532{,}000}
+                + 0.20 \cdot (1 - R^2(\hat{\mathbf{v}}_k, \mathbf{a}_k))
+\]
+\[
+  \min_{\mathbf{z}}\; \frac{1}{3}\sum_{k \in \{2020,2021,2022\}} \mathcal{L}_k
+  \quad \text{via Nelder-Mead, 12 random restarts}
+\]
+
+% ============================================================
+\section{Model Comparison}
+% ============================================================
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{L{3cm} L{2.5cm} C{2cm} R{2.5cm} L{4.5cm}}
+\toprule
+\textbf{Model} & \textbf{Type} & \textbf{Extrapolates} & \textbf{Avg CV MAE} & \textbf{Decision} \\
+\midrule
+\textbf{Hybrid ARIMA} & Classical TS & Yes & $\approx$540K & Selected ($\approx$83\% weight) \\
+\textbf{Theta}        & Classical TS & Yes & $\approx$540K & Selected ($\approx$17\% weight) \\
+Holt-Winters          & Classical TS & Yes & $\approx$540K & In pool; 0\% weight from optimizer \\
+Prophet               & Bayesian TS  & Yes & $\approx$540K & Tested; 0\% NNLS weight --- excluded \\
+LightGBM (lag)        & Tree ensemble & No & $\approx$631K & Cannot extrapolate beyond train range \\
+Chronos-T5 zero-shot  & Foundation   & Partial & $\approx$1{,}370K & Poor on 2-year horizon \\
+\bottomrule
+\end{tabular}
+\caption{All models considered, with rationale for inclusion or exclusion.}
+\end{table}
+
+% ============================================================
+\section{Day-of-Week Factors}
+% ============================================================
+
+Computed as $\bar{y}_{\text{dow}} / \bar{y}_{\text{global}}$ over the 2018--2022 training
+window.
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+\textbf{Day} & \textbf{Revenue factor} & \textbf{COGS factor} \\
+\midrule
+Monday    & 1.015 & 1.013 \\
+Tuesday   & 1.033 & 1.032 \\
+Wednesday & 1.091 & 1.091 \\
+Thursday  & 1.038 & 1.038 \\
+Friday    & 0.945 & 0.945 \\
+Saturday  & 0.918 & 0.919 \\
+Sunday    & 0.959 & 0.960 \\
+\bottomrule
+\end{tabular}
+\caption{Learned day-of-week multipliers.}
+\end{table}
+
+Mid-week (Wed--Thu) consistently shows higher revenue than weekends (Fri--Sun), suggesting
+B2B or work-hour-adjacent purchasing behaviour in this fashion e-commerce segment.
+
+\begin{thebibliography}{9}
+\bibitem{theta2000}
+  V.~Assimakopoulos and K.~Nikolopoulos,
+  ``The theta model: a decomposition approach to forecasting,''
+  \emph{International Journal of Forecasting}, vol.~16, no.~4, pp.~521--530, 2000.
+\end{thebibliography}
+
+\end{document}

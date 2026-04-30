@@ -25,3 +25,9 @@ Thumbs.db
 
 # Kaggle credentials (safety)
 kaggle.json
+
+# Competition raw data — large files (~126MB), do not commit
+data/
+
+# Generated preprocessed data — recreatable via scripts/preprocess_data.py
+preprocessed/
