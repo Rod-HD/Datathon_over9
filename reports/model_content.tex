@@ -61,7 +61,7 @@ Daily Randomness & Promotions, shocks, and events & Additional $\pm$12\% error m
 
 \subsection*{Method: Theta Decomposition (17.4\%) + Hybrid ARIMA (82.6\%)}
 
-Both models capture \textbf{long-term growth explicitly}---why classical time-series beats tree/neural methods that cap at training range. The reliability evidence, validation protocol, data setting, and reproducibility controls are reported in the Appendix.
+Both models capture \textbf{long-term growth explicitly}---why classical time-series beats tree/neural methods that cap at training range \cite{Hyndman2021}. The reliability evidence, validation protocol, data setting, and reproducibility controls are reported in the Appendix.
 
 \subsection*{Business Takeaways}
 
@@ -187,7 +187,7 @@ ARIMA & 3-year residuals & ARIMA fit & Autocorrelation \\
 \end{tabular}
 \end{center}
 
-Expanding-window validation was selected instead of rolling-window validation because rolling windows discard historical information and may weaken the estimation of long-run growth. In contrast, expanding-window validation preserves all available past observations while ensuring that each validation year is forecast using only earlier data.
+Expanding-window validation was selected instead of rolling-window validation because rolling windows discard historical information and may weaken the estimation of long-run growth. In contrast, expanding-window validation preserves all available past observations while ensuring that each validation year is forecast using only earlier data \cite{Bergmeir2014}.
 
 \subsection{Data Leakage Control}
 \label{sec:data-leakage-control}
@@ -244,6 +244,8 @@ The most important features correspond to interpretable business patterns: yearl
 
 \subsubsection{Competition Metrics}
 
+The three evaluation metrics used throughout this analysis are computed as follows \cite{Pedregosa2011}:
+
 \[
 \mathrm{MAE} = \frac{1}{n} \sum_{i=1}^{n} |F_i - A_i|,
 \qquad
@@ -256,7 +258,7 @@ where $n = 1,096$ because Revenue and COGS are concatenated for evaluation.
 
 \subsubsection{Theta Method}
 
-The Theta method decomposes $y_t$ into two theta lines:
+The Theta method decomposes $y_t$ into two theta lines \cite{Assimakopoulos2000}:
 
 \[
 \tilde{y}_0(t) = 2\bar{y} - y_t,
@@ -374,32 +376,42 @@ Mid-week demand, especially Wednesday and Thursday, consistently outperforms wee
 
 \section{References}
 
-\noindent\textbf{Key Methods \& Validation} (All papers have public PDF or free online access)
-
 \begin{enumerate}
-  \item Hyndman, R.~J., \& Athanasopoulos, G. (2021). \textit{Forecasting: Principles and Practice} (3rd ed.). OTexts.\\
-  \textbf{FREE Book}: \url{https://otexts.com/fpp3/}\\
-  \checkmark \textbf{Verify}: Visit site directly; Chapter 8 covers Holt-Winters, Theta, CV methodology.
+  \item \label{ref:Hyndman2021}
+  Hyndman, R.~J., \& Athanasopoulos, G. (2021).
+  \textit{Forecasting: Principles and Practice} (3rd ed.).
+  OTexts.
+  Available at: \url{https://otexts.com/fpp3/}
 
-  \item Assimakopoulos, V., \& Nikolopoulos, K. (2000). The Theta model: a decomposition approach to forecasting. \textit{International Journal of Forecasting}, 16(4), 521--530. DOI: 10.1016/S0169-2070(00)00066-2\\
-  \textbf{PDF}: \url{https://www.researchgate.net/publication/223049702_The_theta_model_A_decomposition_approach_to_forecasting}\\
-  \checkmark \textbf{Verify}: ResearchGate (author has uploaded PDF publicly).
+  \item \label{ref:Assimakopoulos2000}
+  Assimakopoulos, V., \& Nikolopoulos, K. (2000).
+  The Theta model: a decomposition approach to forecasting.
+  \textit{International Journal of Forecasting}, \textbf{16}(4), 521--530.
+  \href{https://doi.org/10.1016/S0169-2070(00)00066-2}{DOI: 10.1016/S0169-2070(00)00066-2}
 
-  \item Bergmeir, C., Ben\'itez, M., \& Artieda, J. (2014). On the use of cross-validation for time series forecasting evaluation. \textit{Information Sciences}, 191, 192--213. DOI: 10.1016/j.ins.2013.07.019\\
-  \textbf{PDF}: \url{https://www.researchgate.net/publication/256720783_On_the_use_of_cross_validation_for_time_series_predictor_evaluation}\\
-  \checkmark \textbf{Verify}: ResearchGate; foundation for expanding-window CV methodology.
+  \item \label{ref:Bergmeir2014}
+  Bergmeir, C., Ben\'itez, M., \& Artieda, J. (2014).
+  On the use of cross-validation for time series forecasting evaluation.
+  \textit{Information Sciences}, \textbf{191}, 192--213.
+  \href{https://doi.org/10.1016/j.ins.2013.07.019}{DOI: 10.1016/j.ins.2013.07.019}
 
-  \item Pedregosa, F., Varoquaux, G., Gramfort, A., et al. (2011). scikit-learn: Machine learning in Python. \textit{Journal of Machine Learning Research}, 12, 2825--2830.\\
-  \textbf{PDF}: \url{https://jmlr.org/papers/v12/pedregosa11a.html}\\
-  \checkmark \textbf{Verify}: JMLR official site (free access); metrics (MAE, RMSE, $R^2$) implementation.
+  \item \label{ref:Pedregosa2011}
+  Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V., Thirion, B., Grisel, O., Blondel, M., M\"uller, A., Nothman, J., Gensollen, F., Payan, O., Nowak, W., Linder, D., Teytaud, O., \& Duchesnay, E. (2011).
+  scikit-learn: Machine learning in Python.
+  \textit{Journal of Machine Learning Research}, \textbf{12}, 2825--2830.
+  Available at: \url{https://jmlr.org/papers/v12/pedregosa11a.html}
 
-  \item Harris, C.~R., Millman, K.~J., van der Walt, S.~J., et al. (2020). Array programming with NumPy. \textit{Nature}, 585, 357--362. DOI: 10.1038/s41586-020-2649-2\\
-  \textbf{PDF}: \url{https://www.nature.com/articles/s41586-020-2649-2}\\
-  \checkmark \textbf{Verify}: Nature official page (open-access article, free download).
+  \item \label{ref:Harris2020}
+  Harris, C.~R., Millman, K.~J., van der Walt, S.~J., Gommers, R., Virtanen, P., Cournapeau, D., Wieser, E., Taylor, J., Berg, S., Smith, N.~J., Kern, R., Picus, M., Hoyer, S., van Kerkwijk, M.~H., Brett, M., Haldane, A., del R\'io, J.~F., Wiebe, M., Peterson, P., \ldots G\'erard-Marchant, P. (2020).
+  Array programming with NumPy.
+  \textit{Nature}, \textbf{585}, 357--362.
+  \href{https://doi.org/10.1038/s41586-020-2649-2}{DOI: 10.1038/s41586-020-2649-2}
 
-  \item Makridakis, S., Spiliotis, E., \& Assimakopoulos, V. (2020). The M4 Competition: 100,000 time series and 61 forecasting methods. \textit{International Journal of Forecasting}, 36(1), 54--74. DOI: 10.1016/j.ijforecast.2019.12.011\\
-  \textbf{Access}: \url{https://www.sciencedirect.com/science/article/pii/S0169207019301128}\\
-  \checkmark \textbf{Verify}: ScienceDirect official page; Mendeley marks as ``free to read''; university library access available.
+  \item \label{ref:Makridakis2020}
+  Makridakis, S., Spiliotis, E., \& Assimakopoulos, V. (2020).
+  The M4 Competition: 100,000 time series and 61 forecasting methods.
+  \textit{International Journal of Forecasting}, \textbf{36}(1), 54--74.
+  \href{https://doi.org/10.1016/j.ijforecast.2019.12.011}{DOI: 10.1016/j.ijforecast.2019.12.011}
 \end{enumerate}
 
 \vspace{1cm}
