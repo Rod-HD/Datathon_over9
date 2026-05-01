@@ -61,7 +61,7 @@ Daily Randomness & Promotions, shocks, and events & Additional $\pm$12\% error m
 
 \subsection*{Method: Theta Decomposition (17.4\%) + Hybrid ARIMA (82.6\%)}
 
-Both models capture \textbf{long-term growth explicitly}---why classical time-series beats tree/neural methods that cap at training range \cite{Hyndman2021}. The reliability evidence, validation protocol, data setting, and reproducibility controls are reported in the Appendix.
+Both models capture \textbf{long-term growth explicitly}---why classical time-series beats tree/neural methods that cap at training range \cite{Hyndman2021}. The ensemble approach is motivated by ensemble validation theory \cite{Makridakis2020}. The reliability evidence, validation protocol, data setting, and reproducibility controls are reported in the Appendix.
 
 \subsection*{Business Takeaways}
 
@@ -157,6 +157,8 @@ ARIMA & 3-year residuals & ARIMA fit & Autocorrelation \\
 \bottomrule
 \end{tabular}
 \end{center}
+
+The Theta method applies log transformation for variance stabilization and incorporates day-of-week factors \cite{Assimakopoulos2000}, while ARIMA focuses on residual patterns over a 3-year window to capture short-term autocorrelation.
 
 \subsubsection{Cyclic Encoding}
 
@@ -254,11 +256,11 @@ The three evaluation metrics used throughout this analysis are computed as follo
 R^2 = 1 - \frac{\sum_{i=1}^{n}(A_i - F_i)^2}{\sum_{i=1}^{n}(A_i - \bar{A})^2}
 \]
 
-where $n = 1,096$ because Revenue and COGS are concatenated for evaluation.
+where $n = 1,096$ because Revenue and COGS are concatenated for evaluation. Numerical implementations are provided by scikit-learn.
 
 \subsubsection{Theta Method}
 
-The Theta method decomposes $y_t$ into two theta lines \cite{Assimakopoulos2000}:
+The Theta method decomposes $y_t$ into two theta lines, a decomposition approach that won the M3/M4 competitions \cite{Assimakopoulos2000}:
 
 \[
 \tilde{y}_0(t) = 2\bar{y} - y_t,
@@ -374,48 +376,44 @@ Mid-week demand, especially Wednesday and Thursday, consistently outperforms wee
 
 \newpage
 
-\section{References}
+\begin{thebibliography}{99}
 
-\begin{enumerate}
-  \item \label{ref:Hyndman2021}
-  Hyndman, R.~J., \& Athanasopoulos, G. (2021).
-  \textit{Forecasting: Principles and Practice} (3rd ed.).
-  OTexts.
-  Available at: \url{https://otexts.com/fpp3/}
+\bibitem{Hyndman2021}
+Hyndman, R.~J., \& Athanasopoulos, G. (2021).
+\textit{Forecasting: Principles and Practice} (3rd ed.).
+OTexts.
+Available at: \url{https://otexts.com/fpp3/}
 
-  \item \label{ref:Assimakopoulos2000}
-  Assimakopoulos, V., \& Nikolopoulos, K. (2000).
-  The Theta model: a decomposition approach to forecasting.
-  \textit{International Journal of Forecasting}, \textbf{16}(4), 521--530.
-  \href{https://doi.org/10.1016/S0169-2070(00)00066-2}{DOI: 10.1016/S0169-2070(00)00066-2}
+\bibitem{Assimakopoulos2000}
+Assimakopoulos, V., \& Nikolopoulos, K. (2000).
+The Theta model: a decomposition approach to forecasting.
+\textit{International Journal of Forecasting}, \textbf{16}(4), 521--530.
+\href{https://doi.org/10.1016/S0169-2070(00)00066-2}{DOI: 10.1016/S0169-2070(00)00066-2}
 
-  \item \label{ref:Bergmeir2014}
-  Bergmeir, C., Ben\'itez, M., \& Artieda, J. (2014).
-  On the use of cross-validation for time series forecasting evaluation.
-  \textit{Information Sciences}, \textbf{191}, 192--213.
-  \href{https://doi.org/10.1016/j.ins.2013.07.019}{DOI: 10.1016/j.ins.2013.07.019}
+\bibitem{Bergmeir2014}
+Bergmeir, C., Ben\'itez, M., \& Artieda, J. (2014).
+On the use of cross-validation for time series forecasting evaluation.
+\textit{Information Sciences}, \textbf{191}, 192--213.
+\href{https://doi.org/10.1016/j.ins.2013.07.019}{DOI: 10.1016/j.ins.2013.07.019}
 
-  \item \label{ref:Pedregosa2011}
-  Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V., Thirion, B., Grisel, O., Blondel, M., M\"uller, A., Nothman, J., Gensollen, F., Payan, O., Nowak, W., Linder, D., Teytaud, O., \& Duchesnay, E. (2011).
-  scikit-learn: Machine learning in Python.
-  \textit{Journal of Machine Learning Research}, \textbf{12}, 2825--2830.
-  Available at: \url{https://jmlr.org/papers/v12/pedregosa11a.html}
+\bibitem{Pedregosa2011}
+Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V., Thirion, B., Grisel, O., Blondel, M., M\"uller, A., Nothman, J., Gensollen, F., Payan, O., Nowak, W., Linder, D., Teytaud, O., \& Duchesnay, E. (2011).
+scikit-learn: Machine learning in Python.
+\textit{Journal of Machine Learning Research}, \textbf{12}, 2825--2830.
+Available at: \url{https://jmlr.org/papers/v12/pedregosa11a.html}
 
-  \item \label{ref:Harris2020}
-  Harris, C.~R., Millman, K.~J., van der Walt, S.~J., Gommers, R., Virtanen, P., Cournapeau, D., Wieser, E., Taylor, J., Berg, S., Smith, N.~J., Kern, R., Picus, M., Hoyer, S., van Kerkwijk, M.~H., Brett, M., Haldane, A., del R\'io, J.~F., Wiebe, M., Peterson, P., \ldots G\'erard-Marchant, P. (2020).
-  Array programming with NumPy.
-  \textit{Nature}, \textbf{585}, 357--362.
-  \href{https://doi.org/10.1038/s41586-020-2649-2}{DOI: 10.1038/s41586-020-2649-2}
+\bibitem{Harris2020}
+Harris, C.~R., Millman, K.~J., van der Walt, S.~J., Gommers, R., Virtanen, P., Cournapeau, D., Wieser, E., Taylor, J., Berg, S., Smith, N.~J., Kern, R., Picus, M., Hoyer, S., van Kerkwijk, M.~H., Brett, M., Haldane, A., del R\'io, J.~F., Wiebe, M., Peterson, P., \ldots G\'erard-Marchant, P. (2020).
+Array programming with NumPy.
+\textit{Nature}, \textbf{585}, 357--362.
+\href{https://doi.org/10.1038/s41586-020-2649-2}{DOI: 10.1038/s41586-020-2649-2}
 
-  \item \label{ref:Makridakis2020}
-  Makridakis, S., Spiliotis, E., \& Assimakopoulos, V. (2020).
-  The M4 Competition: 100,000 time series and 61 forecasting methods.
-  \textit{International Journal of Forecasting}, \textbf{36}(1), 54--74.
-  \href{https://doi.org/10.1016/j.ijforecast.2019.12.011}{DOI: 10.1016/j.ijforecast.2019.12.011}
-\end{enumerate}
+\bibitem{Makridakis2020}
+Makridakis, S., Spiliotis, E., \& Assimakopoulos, V. (2020).
+The M4 Competition: 100,000 time series and 61 forecasting methods.
+\textit{International Journal of Forecasting}, \textbf{36}(1), 54--74.
+\href{https://doi.org/10.1016/j.ijforecast.2019.12.011}{DOI: 10.1016/j.ijforecast.2019.12.011}
 
-\vspace{1cm}
-\noindent\textbf{Data Source}: Sales.csv provided by Datathon 2026 competition (2012-07-04 to 2022-12-31).\\
-\textbf{Reproducibility}: All code, hyperparameters, and results documented in \texttt{scripts/forecast.py}.
+\end{thebibliography}
 
 \end{document}
