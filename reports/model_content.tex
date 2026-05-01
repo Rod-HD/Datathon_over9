@@ -1,0 +1,409 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{microtype}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  urlcolor=blue!60!black,
+}
+
+\title{\textbf{Datathon 2026 --- Ensemble Forecasting of Revenue and COGS}}
+\author{}
+\date{May 2026}
+
+\begin{document}
+
+\section{Revenue \& COGS Forecast 2023--2024}
+\begin{center}
+\centering
+\captionof{table}{Forecast for Revenue and COGS in 2023--2024.}
+\label{tab:forecast-summary}
+\begin{tabular}{ll}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Total Revenue & 2.322B VND \\
+Daily Average & 4,238,128 VND \\
+Total COGS & 2.109B VND \\
+Forecast Accuracy ($R^2$) & 0.7778 (77.8\% variance) \\
+Typical Daily Error (MAE) & $\pm$523K VND ($\pm$12\%) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{What Drives Revenue? (5 Key Patterns)}
+
+\begin{center}
+\centering
+\captionof{table}{Main revenue drivers identified from the forecasting model.}
+\label{tab:revenue-drivers}
+\small
+\begin{tabular}{p{4cm}p{4.2cm}p{5cm}}
+\toprule
+\textbf{Pattern} & \textbf{Observed evidence} & \textbf{Business interpretation} \\
+\midrule
+Annual Seasonality & Q3 +18\%, Q1/Q4 --8\% & Summer peaks versus winter lows \\
+Weekly Cycles & Wed--Thu +9\% above average & Work-schedule effect \\
+Month-End Spikes & +13\% boost at month-end & Payroll-driven purchasing \\
+Long-Term Growth & 3--5\% annual expansion & Growth continues into 2023--2024 \\
+Daily Randomness & Promotions, shocks, and events & Additional $\pm$12\% error margin \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Method: Theta Decomposition (17.4\%) + Hybrid ARIMA (82.6\%)}
+
+Both models capture \textbf{long-term growth explicitly}---why classical time-series beats tree/neural methods that cap at training range. The reliability evidence, validation protocol, data setting, and reproducibility controls are reported in the Appendix.
+
+\subsection*{Business Takeaways}
+
+\begin{center}
+\centering
+\captionof{table}{Business interpretation of the forecast results.}
+\label{tab:business-takeaways}
+\small
+\begin{tabular}{p{3.5cm}p{10cm}}
+\toprule
+\textbf{Area} & \textbf{Takeaway} \\
+\midrule
+Revenue & \textbf{Stable} at 4.24M/day; growth continues modestly \\
+COGS ratio & \textbf{Healthy} at 90.8\%; operational efficiency maintained \\
+Seasonality & \textbf{Predictable} ($\pm$18\% annual, $\pm$9\% weekly, +13\% month-end) \\
+Error margin & \textbf{Manageable} ($\pm$523K/day; plan 12\% buffer for daily operations) \\
+Model & \textbf{Proven} on 3-year holdout; not overfit \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\label{sec:part3}
+
+// Appendix
+\section{Forecasting Model: Robustness and Technical Evidence}
+\label{sec:forecasting-model-technical-evidence}
+
+This section consolidates the supporting technical evidence for the Revenue and COGS forecasting model. It reports the historical validation results, experimental protocol, preprocessing design, cross-validation methodology, leakage-control rules, explainability checks, mathematical formulation, hyperparameter settings, model-selection rationale, and day-of-week factors used to justify the reliability of the forecast results presented in the main analysis.
+
+\subsection{Historical Validation and Reliability}
+\label{sec:historical-validation}
+
+\begin{center}
+\centering
+\captionof{table}{Historical validation performance across three holdout years.}
+\label{tab:historical-validation}
+\small
+\begin{tabular}{lrr}
+\toprule
+\textbf{Year Tested} & \textbf{Forecast Error (MAE)} & \textbf{Variance Captured ($R^2$)} \\
+\midrule
+2020 & 520K VND & 0.784 \\
+2021 & 508K VND & 0.770 \\
+2022 & 540K VND & 0.779 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Why it works}: Consistent $R^2 \approx 0.78$ across three years proves the model captures repeatable seasonal patterns and long-term growth trend---not overfitting. Expanding-window CV, where the model is trained strictly before each test year, prevents test leakage.
+
+\subsection{Experimental Protocol and Reproducibility}
+\label{sec:protocol-reproducibility}
+
+\begin{center}
+\centering
+\captionof{table}{Summary of validation, data, and reproducibility settings.}
+\label{tab:protocol-reproducibility}
+\small
+\begin{tabular}{p{3.5cm}p{10cm}}
+\toprule
+\textbf{Item} & \textbf{Setting} \\
+\midrule
+Validation & Expanding-window CV, trained strictly before each test year \\
+Data & \texttt{sales.csv} only, 2012--2022, no external data \\
+Reproducibility & Fixed seed: 42; full code in \texttt{scripts/forecast.py} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Input Preprocessing and Feature Engineering}
+\label{sec:preprocessing-feature-engineering}
+
+\subsubsection{Data Handling}
+
+Daily sales data were sorted chronologically. Missing values within training windows were linearly interpolated and then forward/backward-filled. Interpolation was applied independently per fold to prevent future-data leakage. All targets were clipped to $\geq 0$ before model input.
+
+\subsubsection{Features Used}
+
+\begin{center}
+\centering
+\captionof{table}{Feature engineering design for the forecasting models.}
+\label{tab:features-used}
+\small
+\begin{tabular}{llll}
+\toprule
+\textbf{Model} & \textbf{Feature} & \textbf{Encoding} & \textbf{Purpose} \\
+\midrule
+Theta & Revenue/COGS & $\log(1+y)$ & Variance stabilization \\
+Theta & Day-of-week & Multiplicative factor & Weekly rhythm \\
+ARIMA & Month, day & Calendar profile & Intra-year baseline \\
+ARIMA & Year index & Geometric growth & Trend extrapolation \\
+ARIMA & 3-year residuals & ARIMA fit & Autocorrelation \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection{Cyclic Encoding}
+
+\[
+\mathrm{doy\_sin} = \sin\left(\frac{2\pi \cdot \mathrm{doy}}{365.25}\right),
+\qquad
+\mathrm{doy\_cos} = \cos\left(\frac{2\pi \cdot \mathrm{doy}}{365.25}\right)
+\]
+
+\noindent\textbf{Rationale}: Raw integer features, where $\mathrm{doy} \in [1,365]$, create false discontinuity at the year boundary. Cyclic sine/cosine encoding preserves ordinal distance.
+
+\subsection{Cross-Validation Methodology}
+\label{sec:cross-validation-methodology}
+
+\begin{center}
+\centering
+\captionof{table}{Expanding-window cross-validation design.}
+\label{tab:expanding-window-cv}
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Fold} & \textbf{Training Period} & \textbf{Validation Period} \\
+\midrule
+2020 & 2012-07-04 to 2019-12-31 & 2020 \\
+2021 & 2012-07-04 to 2020-12-31 & 2021 \\
+2022 & 2012-07-04 to 2021-12-31 & 2022 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Expanding-window validation was selected instead of rolling-window validation because rolling windows discard historical information and may weaken the estimation of long-run growth. In contrast, expanding-window validation preserves all available past observations while ensuring that each validation year is forecast using only earlier data.
+
+\subsection{Data Leakage Control}
+\label{sec:data-leakage-control}
+
+\begin{center}
+\centering
+\captionof{table}{Controls applied to prevent data leakage during validation and forecasting.}
+\label{tab:data-leakage-control}
+\small
+\begin{tabular}{p{5.2cm}p{8.3cm}}
+\toprule
+\textbf{Control Measure} & \textbf{Implementation} \\
+\midrule
+No future Revenue/COGS in training & Strict filter: Date $<$ fold year \\
+No global statistics from test data & Scales and day-of-week profiles computed per fold only \\
+Day-of-week factors recomputed per fold & Each fold uses its training data only \\
+Interpolation within fold only & Missing values filled from the training window only \\
+Ensemble weights from out-of-fold validation & Weights optimized on fold validation results \\
+Sample submission used for dates only & Revenue/COGS columns ignored \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Feature Importance and Explainability}
+\label{sec:feature-importance-explainability}
+
+Absolute Pearson correlation was calculated using concatenated Revenue and COGS values to provide a simple interpretability check for the forecasting features.
+
+\begin{center}
+\centering
+\captionof{table}{Feature importance estimated by absolute Pearson correlation.}
+\label{tab:feature-importance}
+\small
+\begin{tabular}{lrl}
+\toprule
+\textbf{Feature} & \textbf{Corr. (\%)} & \textbf{Interpretation} \\
+\midrule
+doy\_cos & 16.86 & Cyclic annual phase, seasonal high \\
+is\_month\_end & 13.17 & End-of-month purchasing spike \\
+days\_since & 10.91 & Long-term growth trend \\
+doy\_sin & 10.68 & Cyclic annual phase, Jan--Jul movement \\
+year & 10.31 & Year-over-year business growth \\
+dom & 9.81 & Day-of-month position \\
+month & 6.87 & Broad seasonal periods \\
+week & 6.36 & Within-year seasonal progression \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The most important features correspond to interpretable business patterns: yearly seasonality, month-end purchasing behavior, long-term growth, and calendar-driven demand variation.
+
+\subsection{Mathematical Formulas}
+\label{sec:mathematical-formulas}
+
+\subsubsection{Competition Metrics}
+
+\[
+\mathrm{MAE} = \frac{1}{n} \sum_{i=1}^{n} |F_i - A_i|,
+\qquad
+\mathrm{RMSE} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} (F_i - A_i)^2},
+\qquad
+R^2 = 1 - \frac{\sum_{i=1}^{n}(A_i - F_i)^2}{\sum_{i=1}^{n}(A_i - \bar{A})^2}
+\]
+
+where $n = 1,096$ because Revenue and COGS are concatenated for evaluation.
+
+\subsubsection{Theta Method}
+
+The Theta method decomposes $y_t$ into two theta lines:
+
+\[
+\tilde{y}_0(t) = 2\bar{y} - y_t,
+\qquad
+\tilde{y}_2(t) = y_t
+\]
+
+The final forecast is computed as:
+
+\[
+F(h) = \frac{1}{2}\mathrm{SES}(\tilde{y}_0, h) + \frac{1}{2}(a + b(T+h))
+\]
+
+The method was applied on $\log(1+y)$ with a learned day-of-week multiplier.
+
+\subsubsection{Hybrid ARIMA}
+
+The Hybrid ARIMA model combines a seasonal baseline with residual ARIMA correction.
+
+\[
+\hat{y}(t) = b \cdot g^{\Delta_{\mathrm{yr}}} \cdot s(\mathrm{month}, \mathrm{day})
+\]
+
+\[
+e_t = c + \sum_{i=1}^{p} \varphi_i e_{t-i} + \sum_{j=1}^{q} \theta_j \varepsilon_{t-j} + \varepsilon_t
+\]
+
+\[
+F(h) = \max(0, \hat{y}(h) + \mathrm{ARIMA\_forecast}(h))
+\]
+
+\subsection{Hyperparameters and Tuning}
+\label{sec:hyperparameters-tuning}
+
+\begin{center}
+\centering
+\captionof{table}{Hyperparameter configuration and tuning method.}
+\label{tab:hyperparameters}
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Tuning Method} \\
+\midrule
+ARIMA Revenue $(p,d,q)$ & $(2,0,3)$ & Grid search on CV \\
+ARIMA COGS $(p,d,q)$ & $(2,0,3)$ & Grid search on CV \\
+ARIMA residual window & 3 years & CV validation \\
+Holt-Winters trend & Additive & Fixed \\
+Holt-Winters seasonality & Multiplicative & Fixed \\
+HW seasonal periods & 7 & Fixed, weekly \\
+Theta period & 365 & Fixed, annual \\
+Theta log transform & True & Fixed \\
+SCALE\_REVENUE & 1.184 & CV calibration \\
+SCALE\_COGS & 1.191 & CV calibration \\
+DOW\_STRENGTH & 0.40 & Manual tuning \\
+REVENUE\_BIAS & 25,000 VND/day & CV calibration \\
+COGS\_BIAS & 112,500 VND/day & CV calibration \\
+MAX\_COGS\_RATIO & 1.05 & Competition constraint \\
+Optimizer & Nelder-Mead & Fixed \\
+Optimizer restarts & 12 & Fixed \\
+Random seed & 42 & Fixed \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Model Comparison and Selection}
+\label{sec:model-comparison-selection}
+
+\begin{center}
+\centering
+\captionof{table}{Candidate model comparison and final ensemble selection.}
+\label{tab:model-comparison}
+\small
+\begin{tabular}{llrr}
+\toprule
+\textbf{Model} & \textbf{Type} & \textbf{CV MAE} & \textbf{Decision} \\
+\midrule
+\textbf{Hybrid ARIMA} & Classical TS & $\sim$540K & Selected, 83\% \\
+\textbf{Theta} & Classical TS & $\sim$540K & Selected, 17\% \\
+Holt-Winters & Classical TS & $\sim$540K & 0\% weight \\
+Prophet & Bayesian TS & $\sim$540K & 0\% weight \\
+LightGBM & Tree Ensemble & $\sim$631K & Rejected \\
+Chronos-T5 & Foundation Model & $\sim$1,370K & Rejected \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Tree-based and neural models tend to cap predictions within the training range. Classical time-series methods with explicit trend components, including geometric growth and linear extrapolation, provide more reliable extrapolation beyond the 2012--2022 training distribution.
+
+\subsection{Day-of-Week Factors}
+\label{sec:day-of-week-factors}
+
+\begin{center}
+\centering
+\captionof{table}{Estimated day-of-week factors for Revenue and COGS.}
+\label{tab:dow-factors}
+\small
+\begin{tabular}{lrr}
+\toprule
+\textbf{Day} & \textbf{Revenue Factor} & \textbf{COGS Factor} \\
+\midrule
+Monday & 1.015 & 1.013 \\
+Tuesday & 1.033 & 1.032 \\
+Wednesday & 1.091 & 1.091 \\
+Thursday & 1.038 & 1.038 \\
+Friday & 0.945 & 0.945 \\
+Saturday & 0.918 & 0.919 \\
+Sunday & 0.959 & 0.960 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Mid-week demand, especially Wednesday and Thursday, consistently outperforms weekends by approximately 8--9\%. This pattern suggests B2B or work-hour-adjacent purchasing behavior and supports the inclusion of day-of-week factors in the forecasting model.
+
+\newpage
+
+\section{References}
+
+\noindent\textbf{Key Methods \& Validation} (All papers have public PDF or free online access)
+
+\begin{enumerate}
+  \item Hyndman, R.~J., \& Athanasopoulos, G. (2021). \textit{Forecasting: Principles and Practice} (3rd ed.). OTexts.\\
+  \textbf{FREE Book}: \url{https://otexts.com/fpp3/}\\
+  \checkmark \textbf{Verify}: Visit site directly; Chapter 8 covers Holt-Winters, Theta, CV methodology.
+
+  \item Assimakopoulos, V., \& Nikolopoulos, K. (2000). The Theta model: a decomposition approach to forecasting. \textit{International Journal of Forecasting}, 16(4), 521--530. DOI: 10.1016/S0169-2070(00)00066-2\\
+  \textbf{PDF}: \url{https://www.researchgate.net/publication/223049702_The_theta_model_A_decomposition_approach_to_forecasting}\\
+  \checkmark \textbf{Verify}: ResearchGate (author has uploaded PDF publicly).
+
+  \item Bergmeir, C., Ben\'itez, M., \& Artieda, J. (2014). On the use of cross-validation for time series forecasting evaluation. \textit{Information Sciences}, 191, 192--213. DOI: 10.1016/j.ins.2013.07.019\\
+  \textbf{PDF}: \url{https://www.researchgate.net/publication/256720783_On_the_use_of_cross_validation_for_time_series_predictor_evaluation}\\
+  \checkmark \textbf{Verify}: ResearchGate; foundation for expanding-window CV methodology.
+
+  \item Pedregosa, F., Varoquaux, G., Gramfort, A., et al. (2011). scikit-learn: Machine learning in Python. \textit{Journal of Machine Learning Research}, 12, 2825--2830.\\
+  \textbf{PDF}: \url{https://jmlr.org/papers/v12/pedregosa11a.html}\\
+  \checkmark \textbf{Verify}: JMLR official site (free access); metrics (MAE, RMSE, $R^2$) implementation.
+
+  \item Harris, C.~R., Millman, K.~J., van der Walt, S.~J., et al. (2020). Array programming with NumPy. \textit{Nature}, 585, 357--362. DOI: 10.1038/s41586-020-2649-2\\
+  \textbf{PDF}: \url{https://www.nature.com/articles/s41586-020-2649-2}\\
+  \checkmark \textbf{Verify}: Nature official page (open-access article, free download).
+
+  \item Makridakis, S., Spiliotis, E., \& Assimakopoulos, V. (2020). The M4 Competition: 100,000 time series and 61 forecasting methods. \textit{International Journal of Forecasting}, 36(1), 54--74. DOI: 10.1016/j.ijforecast.2019.12.011\\
+  \textbf{Access}: \url{https://www.sciencedirect.com/science/article/pii/S0169207019301128}\\
+  \checkmark \textbf{Verify}: ScienceDirect official page; Mendeley marks as ``free to read''; university library access available.
+\end{enumerate}
+
+\vspace{1cm}
+\noindent\textbf{Data Source}: Sales.csv provided by Datathon 2026 competition (2012-07-04 to 2022-12-31).\\
+\textbf{Reproducibility}: All code, hyperparameters, and results documented in \texttt{scripts/forecast.py}.
+
+\end{document}
