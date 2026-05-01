@@ -190,12 +190,43 @@ See **`reports/drivers.md`** for complete explainability report.
 
 ---
 
+## System Requirements
+
+### Hardware
+
+| Component | Requirement | Notes |
+|---|---|---|
+| **CPU** | Any modern processor (Intel Core i5+, AMD Ryzen 5+, M1/M2/M3, etc.) | No GPU required |
+| **RAM** | Minimum 2 GB; recommended 4+ GB | Peak usage ~300-400 MB during execution |
+| **Storage** | ~500 MB (code + dependencies + data) | Virtual environment: ~350 MB |
+
+### Software
+
+| Component | Version |
+|---|---|
+| **Python** | 3.8+ |
+| **OS** | Windows, macOS, Linux |
+
+### Runtime Performance
+
+| Task | Duration | Hardware (Benchmark) |
+|---|---|---|
+| **Full pipeline** (3 folds + CV + optimization) | **~46 seconds** | Intel Core i7, 8 GB RAM |
+| Data loading & preprocessing | ~2 sec | |
+| Building CV folds | ~1 sec | |
+| Ensemble weight optimization (12 restarts) | ~30 sec | |
+| Model refitting & submission | ~12 sec | |
+
+**Note**: Times are CPU-bound (no GPU acceleration). Actual runtime depends on CPU speed; expect ±20% variation on different hardware.
+
+---
+
 ## Dependencies
 
 Python 3.8+ with packages specified in `requirements.txt`:
 - `pandas`, `numpy` — Data manipulation
 - `scikit-learn` — Metrics and utilities
-- `statsmodels` — ARIMA, Theta, Holt-Winters implementations
+- `statsmodels` — ARIMA, Theta, Holt-Winters implementations (CPU-only)
 - `scipy` — Optimization algorithms
 
 Install via:
