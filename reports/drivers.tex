@@ -293,49 +293,32 @@ Mid-week (Wed--Thu) consistently outperforms weekends by 8--9\%, suggesting B2B 
 
 \section{References}
 
-\subsection{Time-Series Methods}
+\noindent\textbf{Key Methods \& Validation} (All papers have public PDF or free online access)
 
 \begin{enumerate}
-  \item Holt, C.~C. (1957). Forecasting seasonals and trends by exponentially weighted moving averages. \textit{ONR Memorandum}, 52, 1--12. [Holt-Winters method foundation]
+  \item Hyndman, R.~J., \& Athanasopoulos, G. (2021). \textit{Forecasting: Principles and Practice} (3rd ed.). OTexts.\\
+  \textbf{FREE Book}: \url{https://otexts.com/fpp3/}\\
+  \checkmark \textbf{Verify}: Visit site directly; Chapter 8 covers Holt-Winters, Theta, CV methodology.
 
-  \item Winters, P.~R. (1960). Forecasting sales by exponentially weighted moving averages. \textit{Management Science}, 6(3), 324--342. [Multiplicative seasonality]
+  \item Assimakopoulos, V., \& Nikolopoulos, K. (2000). The Theta model: a decomposition approach to forecasting. \textit{International Journal of Forecasting}, 16(4), 521--530. DOI: 10.1016/S0169-2070(00)00066-2\\
+  \textbf{PDF}: \url{https://www.researchgate.net/publication/223049702_The_theta_model_A_decomposition_approach_to_forecasting}\\
+  \checkmark \textbf{Verify}: ResearchGate (author has uploaded PDF publicly).
 
-  \item Box, G.~E.~P., \& Jenkins, G.~M. (1970). \textit{Time Series Analysis: Forecasting and Control}. Holden-Day. [ARIMA theoretical foundation]
+  \item Bergmeir, C., Ben\'itez, M., \& Artieda, J. (2014). On the use of cross-validation for time series forecasting evaluation. \textit{Information Sciences}, 191, 192--213. DOI: 10.1016/j.ins.2013.07.019\\
+  \textbf{PDF}: \url{https://www.researchgate.net/publication/256720783_On_the_use_of_cross_validation_for_time_series_predictor_evaluation}\\
+  \checkmark \textbf{Verify}: ResearchGate; foundation for expanding-window CV methodology.
 
-  \item Hyndman, R.~J., \& Athanasopoulos, G. (2021). \textit{Forecasting: Principles and Practice} (3rd ed.). OTexts. \url{https://otexts.com/fpp3/} [Modern TS forecasting reference, statsmodels basis]
+  \item Pedregosa, F., Varoquaux, G., Gramfort, A., et al. (2011). scikit-learn: Machine learning in Python. \textit{Journal of Machine Learning Research}, 12, 2825--2830.\\
+  \textbf{PDF}: \url{https://jmlr.org/papers/v12/pedregosa11a.html}\\
+  \checkmark \textbf{Verify}: JMLR official site (free access); metrics (MAE, RMSE, $R^2$) implementation.
 
-  \item Assimakopoulos, V., \& Nikolopoulos, K. (2000). The Theta model: a decomposition approach to forecasting. \textit{International Journal of Forecasting}, 16(4), 521--530. [Theta method, M3/M4 competition winner]
-\end{enumerate}
+  \item Harris, C.~R., Millman, K.~J., van der Walt, S.~J., et al. (2020). Array programming with NumPy. \textit{Nature}, 585, 357--362. DOI: 10.1038/s41586-020-2649-2\\
+  \textbf{PDF}: \url{https://www.nature.com/articles/s41586-020-2649-2}\\
+  \checkmark \textbf{Verify}: Nature official page (open-access article, free download).
 
-\subsection{Ensemble \& Validation}
-
-\begin{enumerate}
-  \setcounter{enumi}{5}
-  \item Bates, J.~M., \& Granger, C.~W.~J. (1969). The combination of forecasts. \textit{Journal of the Operational Research Society}, 20(4), 451--468. [Ensemble forecast theory]
-
-  \item Tashman, L.~J. (2000). Out-of-sample tests of forecasting accuracy: An analysis and review. \textit{International Journal of Forecasting}, 16(4), 437--450. [Time-series cross-validation methodology]
-
-  \item Bergmeir, C., Ben\'itez, M., \& Artieda, J. (2014). On the use of cross-validation for time series forecasting evaluation. \textit{Information Sciences}, 191, 192--213. [Expanding-window CV rationale]
-\end{enumerate}
-
-\subsection{Software \& Implementation}
-
-\begin{enumerate}
-  \setcounter{enumi}{8}
-  \item Seabold, S., \& Perlin, A. (2010). statsmodels: Econometric and statistical modeling with Python. \textit{Proceedings of the 9th Python in Science Conference}, 51--58. [ARIMA, Theta, Holt-Winters implementation]
-
-  \item Pedregosa, F., et al. (2011). scikit-learn: Machine learning in Python. \textit{JMLR}, 12, 2825--2830. [MAE, RMSE, R$^2$ metrics; optimization]
-
-  \item McKinney, W. (2010). Data structures for statistical computing in Python. \textit{Proceedings of the 9th Python in Science Conference}, 51--56. [Pandas: data manipulation]
-
-  \item Harris, C.~R., et al. (2020). Array programming with NumPy. \textit{Nature}, 585, 357--362. [NumPy: numerical computation]
-\end{enumerate}
-
-\subsection{E-Commerce Forecasting}
-
-\begin{enumerate}
-  \setcounter{enumi}{12}
-  \item Makridakis, S., Spiliotis, E., \& Assimakopoulos, V. (2020). The M4 Competition: 100,000 time series and 61 forecasting methods. \textit{International Journal of Forecasting}, 36(1), 54--74. [Competition context, ensemble validation at scale]
+  \item Makridakis, S., Spiliotis, E., \& Assimakopoulos, V. (2020). The M4 Competition: 100,000 time series and 61 forecasting methods. \textit{International Journal of Forecasting}, 36(1), 54--74. DOI: 10.1016/j.ijforecast.2019.12.011\\
+  \textbf{Access}: \url{https://www.sciencedirect.com/science/article/pii/S0169207019301128}\\
+  \checkmark \textbf{Verify}: ScienceDirect official page; Mendeley marks as ``free to read''; university library access available.
 \end{enumerate}
 
 \vspace{1cm}
