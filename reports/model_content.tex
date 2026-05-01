@@ -61,7 +61,7 @@ Daily Randomness & Promotions, shocks, and events & Additional $\pm$12\% error m
 
 \subsection*{Method: Theta Decomposition (17.4\%) + Hybrid ARIMA (82.6\%)}
 
-Both models capture \textbf{long-term growth explicitly}---why classical time-series beats tree/neural methods that cap at training range \cite{Hyndman2021}. The ensemble approach is motivated by ensemble validation theory \cite{Makridakis2020}. The reliability evidence, validation protocol, data setting, and reproducibility controls are reported in the Appendix.
+Both selected models include explicit trend or decomposition components, making them suitable for extrapolating the 2023--2024 forecast horizon. This is consistent with forecasting principles that emphasize trend and seasonal structure in time-series modeling \cite{Hyndman2021}. The ensemble choice is also consistent with forecasting competition evidence, where combinations and hybrid methods often perform strongly \cite{Makridakis2020}. The reliability evidence, validation protocol, data setting, and reproducibility controls are reported in the Appendix.
 
 \subsection*{Business Takeaways}
 
@@ -158,7 +158,7 @@ ARIMA & 3-year residuals & ARIMA fit & Autocorrelation \\
 \end{tabular}
 \end{center}
 
-The Theta method applies log transformation for variance stabilization and incorporates day-of-week factors \cite{Assimakopoulos2000}, while ARIMA focuses on residual patterns over a 3-year window to capture short-term autocorrelation.
+The Theta method is used as a decomposition-based forecasting model \cite{Assimakopoulos2000}. In this implementation, the log transformation and day-of-week factors are added as dataset-specific preprocessing and calibration choices, while ARIMA focuses on residual patterns over a 3-year window to capture short-term autocorrelation.
 
 \subsubsection{Cyclic Encoding}
 
@@ -189,7 +189,7 @@ The Theta method applies log transformation for variance stabilization and incor
 \end{tabular}
 \end{center}
 
-Expanding-window validation was selected instead of rolling-window validation because rolling windows discard historical information and may weaken the estimation of long-run growth. In contrast, expanding-window validation preserves all available past observations while ensuring that each validation year is forecast using only earlier data \cite{Bergmeir2014}.
+Expanding-window validation was selected to preserve temporal ordering and ensure that each validation year is forecast using only earlier data. This follows the broader time-series evaluation principle that validation should account for temporal dependence and avoid future-data leakage \cite{Bergmeir2012}.
 
 \subsection{Data Leakage Control}
 \label{sec:data-leakage-control}
@@ -260,7 +260,7 @@ where $n = 1,096$ because Revenue and COGS are concatenated for evaluation. Nume
 
 \subsubsection{Theta Method}
 
-The Theta method decomposes $y_t$ into two theta lines, a decomposition approach that won the M3/M4 competitions \cite{Assimakopoulos2000}:
+The Theta method decomposes the time series into theta lines to capture long-term and short-term movements, and it is widely recognized from its strong performance in the M3 forecasting competition \cite{Assimakopoulos2000}:
 
 \[
 \tilde{y}_0(t) = 2\bar{y} - y_t,
@@ -390,23 +390,17 @@ Assimakopoulos, V. and Nikolopoulos, K.
 \newblock \textit{International Journal of Forecasting}, 16(4):521--530.
 \newblock doi: 10.1016/S0169-2070(00)00066-2
 
-\bibitem{Bergmeir2014}
-Bergmeir, C., Ben\'itez, M., and Artieda, J.
-\newblock On the use of cross-validation for time series forecasting evaluation.
+\bibitem{Bergmeir2012}
+Bergmeir, C., and Ben\'itez, J.~M.
+\newblock On the use of cross-validation for time series predictor evaluation.
 \newblock \textit{Information Sciences}, 191:192--213.
-\newblock doi: 10.1016/j.ins.2013.07.019
+\newblock doi: 10.1016/j.ins.2011.12.028
 
 \bibitem{Pedregosa2011}
 Pedregosa, F., Varoquaux, G., Gramfort, A., et al.
 \newblock scikit-learn: Machine learning in Python.
 \newblock \textit{Journal of Machine Learning Research}, 12:2825--2830.
 \newblock Available at: \url{https://jmlr.org/papers/v12/pedregosa11a.html}
-
-\bibitem{Harris2020}
-Harris, C. R., Millman, K. J., van der Walt, S. J., et al.
-\newblock Array programming with NumPy.
-\newblock \textit{Nature}, 585:357--362.
-\newblock doi: 10.1038/s41586-020-2649-2
 
 \bibitem{Makridakis2020}
 Makridakis, S., Spiliotis, E., and Assimakopoulos, V.
